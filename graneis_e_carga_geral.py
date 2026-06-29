@@ -1,85 +1,105 @@
 import os
 import requests
+import pandas as pd
+import pdfplumber
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import urllib3
 
-def extrair_relatorios_recentes():
-    """
-    Varre a página operacional e efetua o download da versão mais
-    recente dos documentos mapeados na variável 'alvos'.
-    """
+# Desativa os alertas poluentes de requisições sem verificação SSL
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+def converter_pdf_para_excel(caminho_pdf):
+    """Lê o arquivo PDF, extrai as matrizes da tabela e salva em formato Excel (.xlsx)"""
+    # Define o nome do arquivo de saída substituindo a extensão .pdf por .xlsx
+    nome_base = os.path.splitext(caminho_pdf)[0]
+    caminho_excel = f"{nome_base}.xlsx"
+
+    print(f"    [>] Convertendo o PDF para Excel...")
+    dados_extraidos = []
+
+    # Abre o PDF e varre todas as páginas disponíveis
+    with pdfplumber.open(caminho_pdf) as pdf:
+        for pagina in pdf.pages:
+            # A função extract_tables() procura por grades/linhas físicas na página
+            tabelas = pagina.extract_tables()
+
+            for tabela in tabelas:
+                for linha in tabela:
+                    # Os PDFs geralmente possuem quebras de linha (\n) dentro das células.
+                    # Substituímos por " / " para evitar que a linha quebre no Excel.
+                    linha_limpa = [
+                        str(celula).replace("\n", " / ") if celula else ""
+                        for celula in linha
+                    ]
+                    dados_extraidos.append(linha_limpa)
+
+    # Verifica se encontrou alguma estrutura de tabela válida
+    if dados_extraidos:
+        # Pega a primeira linha capturada como cabeçalho e as demais como dados
+        df = pd.DataFrame(dados_extraidos[1:], columns=dados_extraidos[0])
+
+        # Salva o resultado no disco
+        df.to_excel(caminho_excel, index=False, engine="openpyxl")
+        print(f"    [+] Sucesso! Planilha salva em: {caminho_excel}")
+    else:
+        print(f"    [-] Não foi possível detectar grades de tabela neste PDF.")
+
+
+def extrair_e_converter_relatorios():
     url_base = "https://www.portosdoparana.pr.gov.br/Operacional/Pagina/Graneis-de-Importacao-e-Carga-Geral"
-    
-    # Headers para simular um navegador e evitar bloqueios (Error 403)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
 
-    # Defina aqui as partes fixas do texto que identificam os documentos.
-    # Ajuste as strings abaixo para refletirem exatamente os dois links destacados na sua imagem.
-    alvos = [
-        "LINE UP DE GRANÉIS SÓLIDOS DE IMPORTAÇÃO",
-        "LINE UP DE CARGA GERAL"
-        # Se os seus alvos forem as atas, pode alterar para "ATA No 082" ou similar
-    ]
-
-    arquivos_baixados = []
+    alvos = ["LINE UP DE GRANÉIS SÓLIDOS DE IMPORTAÇÃO", "LINE UP DE CARGA GERAL"]
 
     try:
-        print(f"Acessando {url_base}...")
-        
-        # O verify=False garante o acesso mesmo se os certificados SSL do governo estiverem desatualizados
+        # Acesso ao site (ignorando SSL caso o certificado do portal esteja problemático)
         response = requests.get(url_base, headers=headers, verify=False)
         response.raise_for_status()
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Extrai todas as tags de link da página
-        links_pagina = soup.find_all('a', href=True)
-        
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        links_pagina = soup.find_all("a", href=True)
+
         for alvo in alvos:
-            # Varre a página de cima para baixo em busca do termo alvo
             for link in links_pagina:
                 texto_link = link.text.strip().upper()
-                
-                # O operador 'in' identifica o documento independentemente da data que o sufixa
+
+                # Valida se o alvo está no texto (independente da data)
                 if alvo.upper() in texto_link:
-                    url_pdf = urljoin(url_base, link['href'])
-                    
-                    # Higieniza o texto do site para criar um nome de arquivo válido no Windows/Linux
-                    nome_seguro = "".join(c for c in texto_link if c.isalnum() or c in (' ', '-', '_')).strip()
-                    nome_arquivo = f"{nome_seguro}.pdf"
-                    
-                    print(f"\n[+] Alvo encontrado: {texto_link}")
-                    print(f"    Efetuando download: {url_pdf}")
-                    
+                    url_pdf = urljoin(url_base, link["href"])
+
+                    # Higieniza o nome para evitar erros ao salvar no Windows/Linux
+                    nome_seguro = "".join(
+                        c for c in texto_link if c.isalnum() or c in (" ", "-", "_")
+                    ).strip()
+                    caminho_pdf = os.path.join(os.getcwd(), f"{nome_seguro}.pdf")
+
+                    print(f"\n[+] Documento Encontrado: {texto_link}")
+                    print(f"    Baixando: {url_pdf}")
+
+                    # Efetua o download do PDF
                     pdf_response = requests.get(url_pdf, headers=headers, verify=False)
-                    pdf_response.raise_for_status()
-                    
-                    # Salva o arquivo diretamente no diretório atual de execução
-                    caminho_destino = os.path.join(os.getcwd(), nome_arquivo)
-                    with open(caminho_destino, 'wb') as f:
+                    with open(caminho_pdf, "wb") as f:
                         f.write(pdf_response.content)
-                        
-                    print(f"    Salvo com sucesso em: {caminho_destino}")
-                    arquivos_baixados.append(caminho_destino)
-                    
-                    # O 'break' garante que apenas o primeiro arquivo encontrado (o mais recente)
-                    # seja baixado. Assim, ele interrompe a busca por esse alvo e pula para o próximo.
+
+                    # Aciona a conversão imediatamente após o arquivo ser salvo na máquina
+                    converter_pdf_para_excel(caminho_pdf)
+
+                    # Interrompe o loop para processar apenas o mais recente
                     break
-                    
-        return arquivos_baixados
 
     except requests.exceptions.RequestException as e:
-        print(f"Falha na requisição web: {e}")
-        return []
+        print(f"Erro durante a conexão web: {e}")
+    except Exception as e:
+        print(f"Erro durante a conversão: {e}")
+
+
+def main():
+    extrair_e_converter_relatorios()
+
 
 if __name__ == "__main__":
-    # Desabilita os alertas de segurança SSL exibidos no terminal
-    import urllib3
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    
-    extrair_relatorios_recentes()
-    
-#TODO: Salvar os arquivos no caminho específico
-#TODO: Transformar os arquivos PDF em Excel
+    main()
