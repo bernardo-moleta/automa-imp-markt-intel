@@ -20,11 +20,10 @@ def extrair_dados_sinprapar():
         response = requests.get(url, headers=headers)
         response.raise_for_status()  # Verifica se a requisição retornou algum erro (ex: 404)
 
-        # 2. Forçar a codificação correta para ler acentuações do português (comum em páginas brasileiras legadas)
+        # 2. Forçar a codificação correta para ler acentuações do português
         response.encoding = "windows-1252"
 
         # 3. Ler as tabelas presentes no HTML usando pandas
-        # O StringIO é usado para evitar avisos de depreciação de leitura direta de strings
         tabelas = pd.read_html(StringIO(response.text))
 
         if tabelas:
