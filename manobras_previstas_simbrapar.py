@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import requests
 from io import StringIO
-from colorama import Fore, Style, init
+from colorama import Fore, init
 
 # Inicializa o colorama
 init()
