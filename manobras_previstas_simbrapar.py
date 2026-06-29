@@ -1,16 +1,20 @@
 import pandas as pd
 import requests
 from io import StringIO
+from colorama import Fore, Style, init
+
+# Inicializa o colorama
+init()
 
 # 1. Definir a URL da tabela
 url = "http://sinprapar.com.br/PREV.HTM"
 
-# Cabeçalhos para simular o acesso de um navegador real e evitar bloqueios (Error 403/406)
+# Cabeçalhos para simular o acesso de um navegador real e evitar bloqueios
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 
 def extrair_dados_sinprapar():
-    print("Conectando ao site do SINPRAPAR...")
+    print(f"{Fore.YELLOW}Conectando ao site do SINPRAPAR...")
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()  # Verifica se a requisição retornou algum erro (ex: 404)
@@ -33,18 +37,16 @@ def extrair_dados_sinprapar():
             nome_arquivo = "Manobras_SINPRAPAR.xlsx"
             df.to_excel(nome_arquivo, index=False, engine="openpyxl")
 
-            print(f"Sucesso! Extraídos {len(df)} registros.")
-            print(f"Os dados foram salvos no arquivo: {nome_arquivo}")
+            print(f"{Fore.GREEN}Sucesso! Extraídos {len(df)} registros.")
+            print(f"{Fore.GREEN}Os dados foram salvos no arquivo: {nome_arquivo}")
 
         else:
-            print(
-                "A página foi carregada, mas nenhuma estrutura de tabela foi encontrada."
-            )
+            print(f"{Fore.RED}A página foi carregada, mas nenhuma estrutura de tabela foi encontrada.")
 
     except requests.exceptions.RequestException as e:
-        print(f"Erro de conexão ao tentar acessar o site: {e}")
+        print(f"{Fore.RED}Erro de conexão ao tentar acessar o site: {e}")
     except ValueError as e:
-        print(f"Erro ao processar as tabelas do HTML: {e}")
+        print(f"{Fore.RED}Erro ao processar as tabelas do HTML: {e}")
 
 
 def main():

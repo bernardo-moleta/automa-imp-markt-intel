@@ -5,6 +5,10 @@ import pdfplumber
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import urllib3
+from colorama import Fore, Style, init
+
+# Inicializa o colorama
+init()
 
 # Desativa os alertas poluentes de requisições sem verificação SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -16,7 +20,7 @@ def converter_pdf_para_excel(caminho_pdf):
     nome_base = os.path.splitext(caminho_pdf)[0]
     caminho_excel = f"{nome_base}.xlsx"
 
-    print(f"    [>] Convertendo o PDF para Excel...")
+    print(f"{Fore.YELLOW}    [>] Convertendo o PDF para Excel...")
     dados_extraidos = []
 
     # Abre o PDF e varre todas as páginas disponíveis
@@ -42,9 +46,9 @@ def converter_pdf_para_excel(caminho_pdf):
 
         # Salva o resultado no disco
         df.to_excel(caminho_excel, index=False, engine="openpyxl")
-        print(f"    [+] Sucesso! Planilha salva em: {caminho_excel}")
+        print(f"{Fore.GREEN}    [+] Sucesso! Planilha salva em: {caminho_excel}")
     else:
-        print(f"    [-] Não foi possível detectar grades de tabela neste PDF.")
+        print(f"{Fore.RED}    [-] Não foi possível detectar grades de tabela neste PDF.")
 
 
 def extrair_e_converter_relatorios():
@@ -56,7 +60,7 @@ def extrair_e_converter_relatorios():
     alvos = ["LINE UP DE GRANÉIS SÓLIDOS DE IMPORTAÇÃO", "LINE UP DE CARGA GERAL"]
 
     try:
-        # Acesso ao site (ignorando SSL caso o certificado do portal esteja problemático)
+        # Acesso ao site (ignorando SSL)
         response = requests.get(url_base, headers=headers, verify=False)
         response.raise_for_status()
 
@@ -71,30 +75,30 @@ def extrair_e_converter_relatorios():
                 if alvo.upper() in texto_link:
                     url_pdf = urljoin(url_base, link["href"])
 
-                    # Higieniza o nome para evitar erros ao salvar no Windows/Linux
+                    # Normaliza o nome para evitar erros ao salvar no Windows/Linux
                     nome_seguro = "".join(
                         c for c in texto_link if c.isalnum() or c in (" ", "-", "_")
                     ).strip()
                     caminho_pdf = os.path.join(os.getcwd(), f"{nome_seguro}.pdf")
 
-                    print(f"\n[+] Documento Encontrado: {texto_link}")
-                    print(f"    Baixando: {url_pdf}")
+                    print(f"{Fore.GREEN}\n[+] Documento Encontrado: {texto_link}")
+                    print(f"{Fore.CYAN}    Baixando: {url_pdf}")
 
-                    # Efetua o download do PDF
+                    # Faz o download do PDF
                     pdf_response = requests.get(url_pdf, headers=headers, verify=False)
                     with open(caminho_pdf, "wb") as f:
                         f.write(pdf_response.content)
 
-                    # Aciona a conversão imediatamente após o arquivo ser salvo na máquina
+                    # Aciona a conversão após o arquivo ser salvo
                     converter_pdf_para_excel(caminho_pdf)
 
                     # Interrompe o loop para processar apenas o mais recente
                     break
 
     except requests.exceptions.RequestException as e:
-        print(f"Erro durante a conexão web: {e}")
+        print(f"{Fore.RED}Erro durante a conexão web: {e}")
     except Exception as e:
-        print(f"Erro durante a conversão: {e}")
+        print(f"{Fore.RED}Erro durante a conversão: {e}")
 
 
 def main():
