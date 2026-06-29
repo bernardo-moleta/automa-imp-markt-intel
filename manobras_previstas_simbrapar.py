@@ -48,3 +48,5 @@ except requests.exceptions.RequestException as e:
     print(f"Erro de conexão ao tentar acessar o site: {e}")
 except ValueError as e:
     print(f"Erro ao processar as tabelas do HTML: {e}")
+    
+#TODO: Salvar o arquivo no caminho específico

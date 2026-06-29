@@ -80,3 +80,5 @@ if __name__ == "__main__":
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
     extrair_relatorios_recentes()
+    
+#TODO: Salvar os arquivos no caminho específico
