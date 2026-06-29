@@ -4,6 +4,9 @@ import pandas as pd
 import requests
 from io import StringIO
 from colorama import Fore, init
+from datetime import datetime
+
+data_extracao = datetime.now().strftime("%d/%m/%Y %H:%M")
 
 init(autoreset=True)
 
@@ -37,12 +40,12 @@ def extrair_dados_sinprapar():
         df = tabelas[1]
         df = df.dropna(how="all", axis=1).dropna(how="all", axis=0)
         pasta = caminho_saida()
-        nome = "Manobras_SINPRAPAR.xlsx"
+        nome = f"Manobras_SINPRAPAR_{data_extracao}.xlsx"
         arquivo = os.path.join(pasta, nome)
         contador = 1
 
         while os.path.exists(arquivo):
-            arquivo = os.path.join(pasta, f"Manobras_SINPRAPAR_{contador}.xlsx")
+            arquivo = os.path.join(pasta, f"Manobras_SINPRAPAR_{data_extracao}_{contador}.xlsx")
             contador += 1
 
         df.to_excel(arquivo, index=False, engine="openpyxl")
