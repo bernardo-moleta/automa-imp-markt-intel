@@ -1,66 +1,69 @@
 import os
+import sys
 import pandas as pd
 import requests
 from io import StringIO
 from colorama import Fore, init
 
-# Inicializa o colorama
-init()
+init(autoreset=True)
 
-# 1. Definir a URL da tabela
-url = "http://sinprapar.com.br/PREV.HTM"
+URL = "http://sinprapar.com.br/PREV.HTM"
+HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-# Cabeçalhos para simular o acesso de um navegador real e evitar bloqueios
-headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+def caminho_saida():
+    """
+    Retorna a pasta onde o executável está rodando
+    """
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.abspath(__file__))
 
 
 def extrair_dados_sinprapar():
     print(f"{Fore.YELLOW}Conectando ao site do SINPRAPAR...")
+
     try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Verifica se a requisição retornou algum erro (ex: 404)
-
-        # 2. Forçar a codificação correta para ler acentuações do português
+        response = requests.get(URL, headers=HEADERS, timeout=30)
+        response.raise_for_status()
         response.encoding = "windows-1252"
-
-        # 3. Ler as tabelas presentes no HTML usando pandas
         tabelas = pd.read_html(StringIO(response.text))
 
-        if tabelas:
-            # Ajustar o índice para encontrar a tabela com os dados na página
-            df = tabelas[1]
+        if not tabelas:
+            print(f"{Fore.RED}Nenhuma tabela encontrada.")
+            return
 
-            # Remove colunas ou linhas totalmente vazias
-            df = df.dropna(how="all", axis=1).dropna(how="all", axis=0)
+        # tabela principal
+        df = tabelas[1]
+        df = df.dropna(how="all", axis=1).dropna(how="all", axis=0)
+        pasta = caminho_saida()
+        nome = "Manobras_SINPRAPAR.xlsx"
+        arquivo = os.path.join(pasta, nome)
+        contador = 1
 
-            # 4. Salva os dados em um arquivo Excel
-            nome_arquivo = "Manobras_SINPRAPAR.xlsx"
-            
-            # Se o arquivo já existir, adiciona um sufixo para não sobrescrever
-            if os.path.exists(nome_arquivo):
+        while os.path.exists(arquivo):
+            arquivo = os.path.join(pasta, f"Manobras_SINPRAPAR_{contador}.xlsx")
+            contador += 1
 
-                base, ext = os.path.splitext(nome_arquivo)
-                contador = 1
-                while os.path.exists(f"{base}_{contador}{ext}"):
-                    contador += 1
-                nome_arquivo = f"{base}_{contador}{ext}"
-                
-            df.to_excel(nome_arquivo, index=False, engine="openpyxl")
+        df.to_excel(arquivo, index=False, engine="openpyxl")
 
-            print(f"{Fore.GREEN}Sucesso! Extraídos {len(df)} registros.")
-            print(f"{Fore.GREEN}Os dados foram salvos no arquivo: {nome_arquivo}")
+        print(f"{Fore.GREEN}\nSucesso!")
+        print(f"{Fore.GREEN}{len(df)} registros extraídos")
+        print(f"{Fore.GREEN}Arquivo criado:")
+        print(f"{Fore.CYAN}{arquivo}")
 
-        else:
-            print(f"{Fore.RED}A página foi carregada, mas nenhuma estrutura de tabela foi encontrada.")
+    except requests.exceptions.RequestException as erro:
+        print(f"{Fore.RED}Erro de conexão:")
+        print(erro)
 
-    except requests.exceptions.RequestException as e:
-        print(f"{Fore.RED}Erro de conexão ao tentar acessar o site: {e}")
-    except ValueError as e:
-        print(f"{Fore.RED}Erro ao processar as tabelas do HTML: {e}")
+    except Exception as erro:
+        print(f"{Fore.RED}Erro inesperado:")
+        print(erro)
 
 
 def main():
     extrair_dados_sinprapar()
+    input("\nPressione ENTER para fechar...")
 
 
 if __name__ == "__main__":
