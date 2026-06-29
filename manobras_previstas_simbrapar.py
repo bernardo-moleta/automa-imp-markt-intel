@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import requests
 from io import StringIO
@@ -35,6 +36,16 @@ def extrair_dados_sinprapar():
 
             # 4. Salva os dados em um arquivo Excel
             nome_arquivo = "Manobras_SINPRAPAR.xlsx"
+            
+            # Se o arquivo já existir, adiciona um sufixo para não sobrescrever
+            if os.path.exists(nome_arquivo):
+
+                base, ext = os.path.splitext(nome_arquivo)
+                contador = 1
+                while os.path.exists(f"{base}_{contador}{ext}"):
+                    contador += 1
+                nome_arquivo = f"{base}_{contador}{ext}"
+                
             df.to_excel(nome_arquivo, index=False, engine="openpyxl")
 
             print(f"{Fore.GREEN}Sucesso! Extraídos {len(df)} registros.")
