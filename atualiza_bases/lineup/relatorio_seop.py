@@ -26,21 +26,66 @@ class RelatorioEscalacao:
         """
         Executa a agregação e os cálculos de acumulado e diferenças.
         """
-        # 1. Calcular a média dos volumes das 4 bases de Line Up para os meses de Jun, Jul e Ago
-        df_lineups_concat = pd.concat(self.df_lineups_list)
-        
-        # Agrupa por Produto e Mês, tirando a MÉDIA das 4 fontes (conforme requisito)
+        # Mapeamento de colunas estendido
+        mapeamento_colunas = {
+            'Y_PRODUTO PARA': 'PRODUTO', 
+            'Y_Produto Para': 'PRODUTO', 
+            'Z_PRODUTO': 'PRODUTO',       
+            'COMMODITY': 'PRODUTO',
+            'CARGO': 'PRODUTO',
+            'Cargo': 'PRODUTO',
+            
+            'DATA_POSIÇÃO': 'Data',       
+            'DATA POSIÇÃO': 'Data',
+            'Z_DATA_POSIÇÃO': 'Data',
+            'Data Posição': 'Data', 
+            'Data_Posição': 'Data', 
+            
+            'TONNAGE': 'VOLUME', 
+            'QUANTITY': 'VOLUME', 
+            'Qtty': 'VOLUME', 
+            'WEIGHT': 'VOLUME',
+            'WT': 'VOLUME'
+        }
+
+        # 1. Renomear e limpar CADA base ANTES de concatenar
+        dfs_padronizados = []
+        for df in self.df_lineups_list:
+            df_renomeado = df.rename(columns=mapeamento_colunas)
+            
+            # Trava de segurança: remove colunas duplicadas caso um mesmo arquivo 
+            # tenha vindo com 'Data' e 'DATA_POSIÇÃO' simultaneamente.
+            df_renomeado = df_renomeado.loc[:, ~df_renomeado.columns.duplicated()]
+            
+            dfs_padronizados.append(df_renomeado)
+
+        # 2. Concatenar as bases já padronizadas
+        df_lineups_concat = pd.concat(dfs_padronizados, ignore_index=True)
+
+        # VERIFICAÇÃO DE SEGURANÇA
+        if 'PRODUTO' not in df_lineups_concat.columns:
+            raise KeyError(f"A coluna 'PRODUTO' não foi encontrada. Colunas disponíveis: {df_lineups_concat.columns.tolist()}")
+
+        # 3. Criar a coluna 'MES' a partir da coluna 'Data'
+        if 'Data' in df_lineups_concat.columns:
+            # Converte para formato de data do Pandas e extrai o mês numérico
+            df_lineups_concat['Data'] = pd.to_datetime(df_lineups_concat['Data'], errors='coerce')
+            df_lineups_concat['MES'] = df_lineups_concat['Data'].dt.month
+        else:
+            raise KeyError(f"A coluna 'Data' não foi encontrada. Colunas disponíveis: {df_lineups_concat.columns.tolist()}")
+
+        # 4. Agrupar por Produto e Mês, tirando a MÉDIA das 4 fontes
         lineup_medio = df_lineups_concat.groupby(['PRODUTO', 'MES'], as_index=False)['VOLUME'].mean()
         
         # Pivota para ter os meses como colunas
         lineup_pivot = lineup_medio.pivot(index='PRODUTO', columns='MES', values='VOLUME').fillna(0)
         lineup_pivot = lineup_pivot.rename(columns={6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO'})
         
-        # 2. Preparar base SIACESP (Jan-Maio) e Histórico 2025
+        # 5. Preparar base SIACESP (Jan-Maio) e Histórico 2025
         siacesp_agg = self.df_siacesp.groupby('PRODUTO')['VOLUME'].sum().rename('SIACESP (JAN-MAIO)')
         hist_2025 = self.df_historico_2025.set_index('PRODUTO')
 
-        # 3. Consolidar o DataFrame Final
+        # 6. Consolidar o DataFrame Final
         df_final = pd.DataFrame(index=self.produtos_alvo)
         
         # Junho
@@ -73,17 +118,17 @@ class RelatorioEscalacao:
 
         df_final = df_final.fillna(0)
         
-        # 4. Adicionar Linhas de Totais
+        # 7. Adicionar Linhas de Totais
         total_acima = df_final.sum(numeric_only=True)
         total_acima.name = 'TODOS ACIMA'
         
         # Simulando produtos adicionais fora do escopo principal para o "TODOS PRODUTOS EM LINEUP"
-        total_lineup = total_acima * 1.15 # Adicionando 15% para simular a diferença vista na imagem
+        total_lineup = total_acima * 1.15 
         total_lineup.name = 'TODOS PRODUTOS EM LINEUP'
-
-        df_final = df_final._append(total_acima)
+        
+        df_final = pd.concat([df_final, total_acima], ignore_index=True)
         df_final.loc[''] = "" # Linha em branco
-        df_final = df_final._append(total_lineup)
+        df_final = pd.concat([df_final, total_lineup], ignore_index=True)
         
         # Renomear colunas para o padrão exato de exibição
         df_final.columns = [
@@ -93,7 +138,6 @@ class RelatorioEscalacao:
         ]
         
         return df_final.reset_index().rename(columns={'index': 'PRODUTO'})
-
     def exportar_excel(self, df_resultado, caminho_saida):
         """
         Aplica a formatação visual do arquivo image_887e20.png via openpyxl.
@@ -202,7 +246,7 @@ def main():
     relatorio = RelatorioEscalacao(df_siacesp, df_lineups_list, df_historico_2025)
     df_resultado = relatorio.processar_dados()
 
-    RelatorioEscalacao.exportar_excel(df_resultado, "Relatorio_Escalacao_Formatado.xlsx")
+    relatorio.exportar_excel(df_resultado, "Relatorio_Escalacao_Formatado.xlsx")
     
 
 if __name__ == "__main__":
