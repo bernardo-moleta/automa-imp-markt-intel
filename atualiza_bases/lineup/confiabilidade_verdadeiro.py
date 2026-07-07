@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import warnings
 from openpyxl import Workbook
@@ -9,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 
 class ComparadorEscalacao:
-    def __init__(self, siacesp_path, data_posicao_alvo, mes_etb_alvo = 5):
+    def __init__(self, siacesp_path, data_posicao_alvo, mes_etb_alvo=5):
         """
         Inicializa a classe centralizando a base do SIACESP.
         """
@@ -151,12 +152,47 @@ def aplicar_estilo_planilha(ws, titulo):
     )
 
 
+def exportar_dados_para_html(excel_path="Analise_Comparativa_Escalacao.xlsx"):
+    """
+    Lê a saída do Excel e gera um arquivo JavaScript para alimentar o HTML dinamicamente.
+    """
+    print("\nExportando dados dinâmicos para o Dashboard HTML...")
+    try:
+        xls = pd.ExcelFile(excel_path)
+
+        def ler_aba(nome_aba):
+            if nome_aba in xls.sheet_names:
+                # skiprows=2 para pular as linhas de título geradas pelo openpyxl
+                df = pd.read_excel(xls, sheet_name=nome_aba, skiprows=2)
+                # Preenche valores vazios com 0 para evitar erros no JSON
+                df = df.fillna(0)
+                return df.to_dict(orient="records")
+            return []
+
+        datasets = {
+            "resumo": ler_aba("Resumo Consolidado"),
+            "futuro": ler_aba("Comp_FUTURO"),
+            "transatlantica": ler_aba("Comp_TRANSATLANTICA"),
+            "wilson": ler_aba("Comp_WILSON_SONS"),
+            "orion": ler_aba("Comp_ORION"),
+            "siacesp_base": ler_aba("Base_SIACESP_Agregada"),
+        }
+
+        # Cria o arquivo na mesma pasta que o script e o HTML
+        with open("dados_dashboard.js", "w", encoding="utf-8") as f:
+            f.write("const dashboardData = " + json.dumps(datasets) + ";")
+
+        print(
+            "✅ Arquivo 'dados_dashboard.js' atualizado! Basta atualizar a página HTML."
+        )
+    except Exception as e:
+        print(f"Erro ao exportar dados para HTML: {e}")
+
+
 def main():
     # 1. Instanciar a classe base configurando Data da Posição (2026-06-11) e Mês ETB (Maio)
     # NOTA: Ajuste o nome dos arquivos nos parâmetros conforme estão salvos localmente
-    comparador = ComparadorEscalacao(
-        "BI_Importacao Siacesp.xlsx", "2026-06-11", 5
-    )
+    comparador = ComparadorEscalacao("BI_Importacao Siacesp.xlsx", "2026-06-11", 5)
 
     # 2. Processar cada base com suas colunas de volume específicas
     comp_futuro = comparador.processar_lineup(
@@ -247,6 +283,12 @@ def main():
     # 5. Salva o resultado final
     wb.save("Analise_Comparativa_Escalacao.xlsx")
     print("Relatório 'Analise_Comparativa_Escalacao.xlsx' gerado com sucesso!")
+
+    # ==========================================
+
+    # ADICIONE A CHAMADA DA FUNÇÃO AQUI:
+    # Certifique-se de que o nome do arquivo bate com o que você acabou de salvar
+    exportar_dados_para_html("Analise_Comparativa_Escalacao.xlsx")
 
 
 # Executa o pipeline

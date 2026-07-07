@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análise Comparativa de Escalação</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="dados_dashboard.js"></script> 
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --text: #111111;
+      --muted: #666666;
+      --border: #e0e0e0;
+      --black: #000000;
+      --font-sans: 'Inter', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Minimalist / Brutalist Header */
+    header {
+      border-bottom: 2px solid var(--black);
+      padding: 32px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .brand p {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .meta-info {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    main {
+      padding: 40px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .kpi-card {
+      border: 1px solid var(--black);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: var(--surface);
+      transition: transform 0.2s;
+    }
+    
+    .kpi-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .kpi-value {
+      font-size: 40px;
+      font-weight: 500;
+      letter-spacing: -0.04em;
+      font-family: var(--font-mono);
+    }
+
+    /* Tabs Layout */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--black);
+      margin-bottom: 40px;
+      gap: 32px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      padding: 0 0 16px 0;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      color: var(--black);
+    }
+
+    .tab.active {
+      color: var(--black);
+      border-bottom-color: var(--black);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chart-container {
+      border: 1px solid var(--black);
+      padding: 32px;
+      margin-bottom: 48px;
+      height: 400px;
+      position: relative;
+      background: var(--surface);
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .section-title::before {
+      content: '';
+      display: block;
+      width: 12px;
+      height: 12px;
+      background: var(--black);
+    }
+
+    /* Table Design */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--black);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      border-bottom: 1px solid var(--black);
+      text-align: left;
+      padding: 16px 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: #fafafa;
+      white-space: nowrap;
+    }
+
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: #f5f5f5;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .discrepancy-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      border: 1px solid var(--black);
+      background: #fafafa;
+    }
+
+    .discrepancy-negative .discrepancy-badge {
+      background: var(--black);
+      color: var(--bg);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>Dashboard Confiabilidade</h1>
+      <p>Análise Comparativa Automática / Line Up vs SIACESP</p>
+    </div>
+    <div class="meta-info">
+      <div id="gen-date"></div>
+      <div>Dados Dinâmicos</div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Maior Discrepância Registrada</div>
+        <div class="kpi-value" id="kpi-max-disc">-</div>
+        <div class="kpi-label" id="kpi-max-disc-label" style="margin-top:16px; margin-bottom:0;">Processando...</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Vol. Total Base Siacesp</div>
+        <div class="kpi-value" id="kpi-vol-total">-</div>
+        <div class="kpi-label" style="margin-top:16px; margin-bottom:0;">Toneladas (MT)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Fontes Line Up Analisadas</div>
+        <div class="kpi-value" id="kpi-fontes-count">-</div>
+        <div class="kpi-label" id="kpi-fontes-names" style="margin-top:16px; margin-bottom:0;">-</div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas por Agente/Produto</div>
+      <canvas id="discChart"></canvas>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-target="resumo">Resumo Consolidado</div>
+      <div class="tab" data-target="futuro">Futuro</div>
+      <div class="tab" data-target="transatlantica">Transatlântica</div>
+      <div class="tab" data-target="wilson">Wilson Sons</div>
+      <div class="tab" data-target="orion">Orion</div>
+    </div>
+
+    <div id="resumo" class="tab-content active">
+      <h2 class="section-title">Top Discrepâncias Gerais</h2>
+      <div class="table-wrap">
+        <table id="table-resumo">
+          <thead>
+            <tr>
+              <th>Fonte Line Up</th>
+              <th>Produto</th>
+              <th class="right">Volume Line Up</th>
+              <th class="right">Volume SIACESP</th>
+              <th class="right">Discrepância</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="futuro" class="tab-content">
+      <h2 class="section-title">Comparação: FUTURO vs SIACESP</h2>
+      <div class="table-wrap">
+        <table id="table-futuro">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="right">Volume Line Up</th>
+              <th class="right">Volume SIACESP</th>
+              <th class="right">Discrepância</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="transatlantica" class="tab-content">
+      <h2 class="section-title">Comparação: TRANSATLÂNTICA vs SIACESP</h2>
+      <div class="table-wrap">
+        <table id="table-transatlantica">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="right">Volume Line Up</th>
+              <th class="right">Volume SIACESP</th>
+              <th class="right">Discrepância</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="wilson" class="tab-content">
+      <h2 class="section-title">Comparação: WILSON SONS vs SIACESP</h2>
+      <div class="table-wrap">
+        <table id="table-wilson">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="right">Volume Line Up</th>
+              <th class="right">Volume SIACESP</th>
+              <th class="right">Discrepância</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="orion" class="tab-content">
+      <h2 class="section-title">Comparação: ORION vs SIACESP</h2>
+      <div class="table-wrap">
+        <table id="table-orion">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="right">Volume Line Up</th>
+              <th class="right">Volume SIACESP</th>
+              <th class="right">Discrepância</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('gen-date').textContent = `LIDO EM: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`;
+
+      // 1. Verificação de Segurança (Garante que o Python rodou)
+      if (typeof dashboardData === 'undefined') {
+        document.getElementById('main-content').innerHTML = `
+          <div style="border: 1px solid var(--black); padding: 40px; text-align: center;">
+            <h2 style="font-size: 24px; margin-bottom: 16px;">⚠️ Base de Dados Não Encontrada</h2>
+            <p style="color: var(--muted); font-family: var(--font-mono);">O arquivo <b>dados_dashboard.js</b> não foi carregado pelo HTML.</p>
+            <p style="margin-top: 16px;"><b>Passo a Passo:</b><br>1. Adicione a função de exportação no seu script Python.<br>2. Rode o Python para gerar o arquivo .js.<br>3. Atualize esta página.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Formatadores
+      const formatNumber = (num) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
+      const formatCompact = (num) => new Intl.NumberFormat('pt-BR', { notation: "compact", maximumFractionDigits: 2 }).format(num);
+
+      // --- CÁLCULO DE KPIs DINÂMICOS ---
+      
+      // KPI 1: Maior Discrepância
+      let maxDiscObj = null;
+      let maxDiscVal = -1;
+      
+      dashboardData.resumo.forEach(r => {
+        if(!r["Y_PRODUTO PARA"]) return;
+        const valAbs = Math.abs(r["Discrepancia"] || 0);
+        if (valAbs > maxDiscVal) {
+          maxDiscVal = valAbs;
+          maxDiscObj = r;
+        }
+      });
+
+      if (maxDiscObj) {
+        document.getElementById('kpi-max-disc').textContent = formatCompact(maxDiscObj["Discrepancia"]);
+        document.getElementById('kpi-max-disc-label').textContent = `${maxDiscObj["Y_PRODUTO PARA"]} / ${maxDiscObj["Fonte Line Up"]}`;
+      }
+
+      // KPI 2: Volume Total Siacesp (Somado dinamicamente da aba agregada)
+      let volTotal = 0;
+      if (dashboardData.siacesp_base && dashboardData.siacesp_base.length > 0) {
+        volTotal = dashboardData.siacesp_base.reduce((acc, row) => acc + (row["Volume_SIACESP"] || 0), 0);
+      }
+      document.getElementById('kpi-vol-total').textContent = formatCompact(volTotal);
+
+      // KPI 3: Fontes Analisadas
+      const fontes = new Set(dashboardData.resumo.map(r => r["Fonte Line Up"]).filter(Boolean));
+      document.getElementById('kpi-fontes-count').textContent = fontes.size;
+      document.getElementById('kpi-fontes-names').textContent = Array.from(fontes).join(', ') || 'Nenhuma fonte encontrada';
+
+      // --- POPULAR TABELAS ---
+      const populateTable = (tableId, data, includeSource = false) => {
+        const tbody = document.querySelector(`#${tableId} tbody`);
+        if (!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5">Nenhum dado encontrado</td></tr>';
+          return;
+        }
+
+        data.forEach(row => {
+          if (!row["Y_PRODUTO PARA"]) return; // Pula linhas vazias
+
+          const tr = document.createElement('tr');
+          const disc = row["Discrepancia"] || 0;
+          const discClass = disc < 0 ? 'discrepancy-negative' : 'discrepancy-positive';
+          
+          let html = '';
+          if (includeSource) {
+            html += `<td><strong>${row["Fonte Line Up"] || '-'}</strong></td>`;
+          }
+          
+          html += `
+            <td>${row["Y_PRODUTO PARA"]}</td>
+            <td class="right mono">${formatNumber(row["Volume_LineUp"] || 0)}</td>
+            <td class="right mono">${formatNumber(row["Volume_SIACESP"] || 0)}</td>
+            <td class="right mono ${discClass}">
+              <span class="discrepancy-badge">${formatNumber(disc)}</span>
+            </td>
+          `;
+          
+          tr.innerHTML = html;
+          tbody.appendChild(tr);
+        });
+      };
+
+      populateTable('table-resumo', dashboardData.resumo, true);
+      populateTable('table-futuro', dashboardData.futuro);
+      populateTable('table-transatlantica', dashboardData.transatlantica);
+      populateTable('table-wilson', dashboardData.wilson);
+      populateTable('table-orion', dashboardData.orion);
+
+      // --- RENDERIZAR GRÁFICO DINÂMICO ---
+      const validData = dashboardData.resumo.filter(d => d["Y_PRODUTO PARA"]);
+      const chartData = [...validData].sort((a, b) => Math.abs(b["Discrepancia"] || 0) - Math.abs(a["Discrepancia"] || 0)).slice(0, 8);
+
+      if(chartData.length > 0) {
+        const ctx = document.getElementById('discChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: chartData.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`),
+            datasets: [{
+              label: 'Discrepância (MT)',
+              data: chartData.map(d => d["Discrepancia"] || 0),
+              backgroundColor: '#111111',
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#000000',
+                titleFont: { family: "'Inter', sans-serif", size: 13 },
+                bodyFont: { family: "'JetBrains Mono', monospace", size: 12 },
+                padding: 12,
+                cornerRadius: 0
+              }
+            },
+            scales: {
+              y: { 
+                grid: { color: '#e0e0e0', drawBorder: false },
+                ticks: { font: { family: "'JetBrains Mono', monospace", size: 11 }, color: '#666666' }
+              },
+              x: { 
+                grid: { display: false, drawBorder: false },
+                ticks: { 
+                  font: { family: "'Inter', sans-serif", size: 11, weight: '500' },
+                  color: '#111111',
+                  maxRotation: 30,
+                  minRotation: 30
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // --- NAVEGAÇÃO DAS ABAS ---
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById(tab.dataset.target).classList.add('active');
+        });
+      });
+    });
+  </script>
+</body>
+</html>
