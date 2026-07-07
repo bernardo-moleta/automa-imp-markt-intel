@@ -205,7 +205,7 @@
 
         const getFonte         = (row) => row["FONTE_DADOS"] || "DESCONHECIDA";
         const getLineupPosDate = (row) => row["DATA POSIÇÃO"] || row["DATA_POSIÇÃO"] || row["Z_DATA_POSIÇÃO"] || row.data_posicao || row.Data;
-        const getLineupEta     = (row) => row["ETA"] || row["Z_ETA"] || row.eta;
+        const getLineupEtb     = (row) => row["ETB"] || row["Z_ETB"] || row.etb;
         const getLineupVol     = (row) => parseFloat(row["Qtty"] || row["QUANTITY"] || row["WEIGHT"] || row["TONNAGE"] || row["VOLUME"] || row.volume || row.Volume) || 0;
         const getLineupProd    = (row) => row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.PRODUTO || row.produto || row.Produto;
 
@@ -305,7 +305,7 @@
                 const dataAlvo = isAtual ? semanaMapAtual[fonte] : semanaMapPassada[fonte];
                 
                 if (dtPosISO === dataAlvo) {
-                    const mesEta = getMesAno(getLineupEta(row));
+                    const mesEta = getMesAno(getLineupEtb(row));
                     const idxMes = mesesAlvo.indexOf(mesEta);
                     
                     if (idxMes > -1) {
@@ -474,7 +474,7 @@
           const cen3Proj = cen2Proj + lAt[2];
 
           const trClass = isTotal ? 'class="sop-total-row"' : '';
-          let nomeExibicao = nome === 'NP' ? 'NP+MES' : nome;
+          let nomeExibicao = nome === 'NP' ? 'NP+NPS+MES' : nome;
           if (nome === 'UREA') nomeExibicao = 'UREIA'; // Ajuste visual de exibição
 
           return `
@@ -493,7 +493,7 @@
         };
 
         produtosObrigatorios.forEach(prod => { tbodyHtml += gerarLinha(prod, false); });
-        tbodyHtml += gerarLinha('TODOS ACIMA', true);
+        tbodyHtml += gerarLinha('TODOS', true);
         document.getElementById('sop-tbody').innerHTML = tbodyHtml;
       }
 
