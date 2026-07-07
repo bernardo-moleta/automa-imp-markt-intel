@@ -305,8 +305,8 @@
                 const dataAlvo = isAtual ? semanaMapAtual[fonte] : semanaMapPassada[fonte];
                 
                 if (dtPosISO === dataAlvo) {
-                    const mesEta = getMesAno(getLineupEtb(row));
-                    const idxMes = mesesAlvo.indexOf(mesEta);
+                    const mesEtb = getMesAno(getLineupEtb(row));
+                    const idxMes = mesesAlvo.indexOf(mesEtb);
                     
                     if (idxMes > -1) {
                         const fontesPermitidas = getConfigMes(idxMes);
@@ -481,9 +481,9 @@
             <tr ${trClass}>
               <td>${nomeExibicao}</td>
               
-              <td>${formatNumber(lAt[0])}</td> <td class="sub-col-siacesp">${formatNumber(iso1)}</td> <td>${renderDiff(lAt[0], lPa[0])}</td>
-              <td>${formatNumber(lAt[1])}</td> <td class="sub-col-siacesp">${formatNumber(iso2)}</td> <td>${renderDiff(lAt[1], lPa[1])}</td>
-              <td>${formatNumber(lAt[2])}</td> <td class="sub-col-siacesp">${formatNumber(iso3)}</td> <td>${renderDiff(lAt[2], lPa[2])}</td>
+              <td>${formatNumber(lAt[0])}</td> <td class="sub-col-siacesp">${formatNumber(iso1)}</td> <td>${renderDiff(lAt[0], iso1)}</td>
+              <td>${formatNumber(lAt[1])}</td> <td class="sub-col-siacesp">${formatNumber(iso2)}</td> <td>${renderDiff(lAt[1], iso2)}</td>
+              <td>${formatNumber(lAt[2])}</td> <td class="sub-col-siacesp">${formatNumber(iso3)}</td> <td>${renderDiff(lAt[2], iso3)}</td>
               
               <td class="border-thick">${formatNumber(cen1Proj)}</td> <td>${formatNumber(a1)}</td> <td>${renderVarPerc(cen1Proj, a1)}</td>
               <td class="border-thick">${formatNumber(cen2Proj)}</td> <td>${formatNumber(a2)}</td> <td>${renderVarPerc(cen2Proj, a2)}</td>
