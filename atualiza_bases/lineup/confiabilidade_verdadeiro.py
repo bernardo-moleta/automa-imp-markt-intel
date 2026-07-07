@@ -152,11 +152,26 @@ def aplicar_estilo_planilha(ws, titulo):
     )
 
 
-def exportar_dados_para_html(excel_path="Analise_Comparativa_Escalacao.xlsx", df_siacesp_bruto=None, df_lineup_bruto=None):
+def exportar_dados_para_html(
+    excel_path="Analise_Comparativa_Escalacao.xlsx", 
+    df_siacesp_bruto=None, 
+    dict_lineups=None, 
+    config_sop=None
+):
     """
-    Lê a saída do Excel e gera um arquivo JavaScript. 
-    Se você tiver os DataFrames originais do SIACESP e do Lineup no código, 
-    passe-os como df_siacesp_bruto e df_lineup_bruto.
+    dict_lineups: Dicionário com nomes das fontes e seus respectivos arquivos (ou DataFrames).
+        Ex: {
+            "ORION": "BI_Line Up_ORION.xlsx",
+            "TRANSATLANTICA": "BI_Line Up_TRANSATLANTICA.xlsx",
+            "WSONS": "BI_Line Up_WILSON SONS.xlsx",
+            "UNIMAR": "BI_Line Up.xlsx"
+        }
+    config_sop: Dicionário definindo quais fontes usar em cada mês de projeção S&OP (1, 2 e 3).
+        Ex: {
+            1: ["ORION", "TRANSATLANTICA"], # Junho usa a média destas duas
+            2: ["WSONS"],                   # Julho usa apenas esta
+            3: ["ORION", "UNIMAR"]          # Agosto usa a média destas duas
+        }
     """
     print("\nExportando dados dinâmicos para o Dashboard HTML...")
     try:
@@ -165,26 +180,52 @@ def exportar_dados_para_html(excel_path="Analise_Comparativa_Escalacao.xlsx", df
         def ler_aba(nome_aba):
             if nome_aba in xls.sheet_names:
                 df = pd.read_excel(xls, sheet_name=nome_aba, skiprows=2)
-                df = df.fillna(0)
-                return df.to_dict(orient="records")
+                return df.fillna(0).to_dict(orient="records")
             return []
             
+        if isinstance(df_siacesp_bruto, str):
+            df_siacesp_bruto = pd.read_excel(df_siacesp_bruto)
+            
+        if df_siacesp_bruto is not None:
+            for col in df_siacesp_bruto.select_dtypes(include=['datetime64', 'datetimetz']).columns:
+                df_siacesp_bruto[col] = df_siacesp_bruto[col].astype(str)
+
+        # --- CONSOLIDADOR DE MÚLTIPLOS LINE UPS ---
+        lineup_raw_consolidado = []
+        if dict_lineups:
+            for nome_fonte, caminho_ou_df in dict_lineups.items():
+                if isinstance(caminho_ou_df, str):
+                    df_temp = pd.read_excel(caminho_ou_df)
+                else:
+                    df_temp = caminho_ou_df.copy()
+                    
+                for col in df_temp.select_dtypes(include=['datetime64', 'datetimetz']).columns:
+                    df_temp[col] = df_temp[col].astype(str)
+                    
+                df_temp['FONTE_DADOS'] = nome_fonte # Carimba de onde veio a informação
+                lineup_raw_consolidado.extend(df_temp.fillna(0).to_dict(orient="records"))
+
+        # Configuração padrão de segurança (se não for enviada, usa todas as fontes para todos os meses)
+        if not config_sop and dict_lineups:
+            todas_fontes = list(dict_lineups.keys())
+            config_sop = {1: todas_fontes, 2: todas_fontes, 3: todas_fontes}
+
         datasets = {
             "resumo": ler_aba("Resumo Consolidado"), 
-            "futuro": ler_aba("Comp_FUTURO"),
+            "unimar": ler_aba("Comp_UNIMAR"),
             "transatlantica": ler_aba("Comp_TRANSATLANTICA"),
             "wilson": ler_aba("Comp_WILSON_SONS"),
             "orion": ler_aba("Comp_ORION"),
             "siacesp_base": ler_aba("Base_SIACESP_Agregada"),
-            # Dados brutos necessários para a nova aba S&OP
             "siacesp_raw": df_siacesp_bruto.fillna(0).to_dict(orient="records") if df_siacesp_bruto is not None else [],
-            "lineup_raw": df_lineup_bruto.fillna(0).to_dict(orient="records") if df_lineup_bruto is not None else []
+            "lineup_raw": lineup_raw_consolidado,
+            "config_sop": config_sop or {}
         }
         
         with open("dados_dashboard.js", "w", encoding="utf-8") as f:
-            f.write("const dashboardData = " + json.dumps(datasets) + ";")
+            f.write("const dashboardData = " + json.dumps(datasets, default=str) + ";")
         
-        print("✅ Arquivo 'dados_dashboard.js' atualizado com suporte S&OP!")
+        print("✅ Arquivo 'dados_dashboard.js' atualizado com Suporte Multi-Lineup!")
     except Exception as e:
         print(f"Erro ao exportar dados para HTML: {e}")
 
@@ -195,7 +236,7 @@ def main():
     comparador = ComparadorEscalacao("BI_Importacao Siacesp.xlsx", "2026-06-11", 5)
 
     # 2. Processar cada base com suas colunas de volume específicas
-    comp_futuro = comparador.processar_lineup(
+    comp_unimar = comparador.processar_lineup(
         nome="UNIMAR",
         caminho="BI_Line Up.xlsx",
         col_data_pos="DATA_POSIÇÃO",
@@ -228,7 +269,7 @@ def main():
     )
 
     # 3. Concatenar as bases e extrair as Top 20 maiores divergências num contexto consolidado
-    resumo = pd.concat([comp_futuro, comp_trans, comp_wilson, comp_orion])
+    resumo = pd.concat([comp_unimar, comp_trans, comp_wilson, comp_orion])
     resumo = (
         resumo[resumo["Discrepancia"] != 0]
         .sort_values(by="Discrepancia", key=abs, ascending=False)
@@ -247,11 +288,11 @@ def main():
         ws_summary, "Top 20 Discrepâncias - Múltiplas Fontes (Maio 2026)"
     )
 
-    # Aba 2: Futuro
-    ws_futuro = wb.create_sheet(title="Comp_UNIMAR")
-    for r in dataframe_to_rows(comp_futuro, index=False, header=True):
-        ws_futuro.append(r)
-    aplicar_estilo_planilha(ws_futuro, "Comparação: Line Up UNIMAR vs SIACESP")
+    # Aba 2: UNIMAR
+    ws_unimar = wb.create_sheet(title="Comp_UNIMAR")
+    for r in dataframe_to_rows(comp_unimar, index=False, header=True):
+        ws_unimar.append(r)
+    aplicar_estilo_planilha(ws_unimar, "Comparação: Line Up UNIMAR vs SIACESP")
 
     # Aba 3: Transatlântica
     ws_trans = wb.create_sheet(title="Comp_TRANSATLANTICA")
@@ -288,11 +329,22 @@ def main():
 
     # ADICIONE A CHAMADA DA FUNÇÃO AQUI:
     # Certifique-se de que o nome do arquivo bate com o que você acabou de salvar
-    exportar_dados_para_html("Analise_Comparativa_Escalacao.xlsx")  # Passe o DataFrame bruto do Lineup se necessário
-
+    exportar_dados_para_html(
+        excel_path="Analise_Comparativa_Escalacao.xlsx", 
+        df_siacesp_bruto="BI_Importacao Siacesp.xlsx", 
+        dict_lineups={
+            "ORION": "BI_Line Up_ORION.xlsx",
+            "TRANSATLANTICA": "BI_Line Up_TRANSATLANTICA.xlsx",
+            "WSONS": "BI_Line Up_WILSON SONS.xlsx",
+            "UNIMAR": "BI_Line Up.xlsx"
+        },
+        config_sop={
+            1: ["UNIMAR",  "TRANSATLANTICA", "ORION"],
+            2: ["UNIMAR",  "TRANSATLANTICA", "ORION"],
+            3: ["ORION"]
+        }
+    )
 
 # Executa o pipeline
 if __name__ == "__main__":
     main()
-
-#Agora preciso de uma nova aba no dashboard com os dados de uma nova lógica, será uma aba com calculos que são passados em uma reunião semanal de S&OP, onde a estrutura básica de o qu deve ser repassado é o seguinte: 1. Visão geral da semana -> o total em lineup dessa semana comparado com a semana passada, todos os dados com etb para o mes mais atual do siacesp+1, +2 e +3 (ou seja se o mes mais atual do siacesp for maio, a análise será junho, julho e agosto). 2. Cumulado geral vs ano passado, Acumulado é a soma de tudo que tem para o ano atual no siacesp + o lineup devemos fazer isso para os 3 meses (siacesp+junho, siacesp+junho+julho, siacesp+junho+julho+agosto) e comparar com o mesmo período do ano passado. 3. Fazer a mesma lógica do acumulado, mas agora para os seguintes produtos: MOP, SAM, UREIA, MAP, NP(tem lineups que tem MES, MES09, MES15 ETC - DEVE SER ADICIONADO AQUI (O SIACESP NÃO TEM MES, MAS A COMPARAÇÃO DEVE SER NP(SIACESP COM NP +TODOS OS MES)), SSP E TSP. Para um guia visual em anexo tem uma tabela de como isso fica estruturado.

@@ -5,190 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Análise Comparativa de Escalação</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <!-- PONTE DE DADOS DO PYTHON -->
   <script src="dados_dashboard.js"></script> 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     :root {
-      --bg: #ffffff;
-      --surface: #ffffff;
-      --text: #111111;
-      --muted: #666666;
-      --border: #e0e0e0;
-      --black: #000000;
-      --font-sans: 'Inter', -apple-system, sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
-      
-      /* Cores S&OP */
-      --accent-green: #2e7d32;
-      --accent-red: #d32f2f;
-      --sop-header-bg: #f5f5f5;
+      --bg: #ffffff; --surface: #ffffff; --text: #111111; --muted: #666666;
+      --border: #e0e0e0; --black: #000000;
+      --font-sans: 'Inter', -apple-system, sans-serif; --font-mono: 'JetBrains Mono', monospace;
+      --accent-green: #2e7d32; --accent-red: #d32f2f; --sop-header-bg: #f5f5f5;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-sans);
-      font-size: 14px;
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    header {
-      border-bottom: 2px solid var(--black);
-      padding: 32px 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      background: var(--surface);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .brand h1 {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -0.04em;
-      margin-bottom: 4px;
-      text-transform: uppercase;
-    }
-
-    .brand p, .meta-info {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    header { border-bottom: 2px solid var(--black); padding: 32px 40px; display: flex; justify-content: space-between; align-items: flex-end; background: var(--surface); position: sticky; top: 0; z-index: 100; }
+    .brand h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.04em; margin-bottom: 4px; text-transform: uppercase; }
+    .brand p, .meta-info { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
     .meta-info { text-align: right; font-size: 11px; }
+    main { padding: 40px; max-width: 1600px; margin: 0 auto; }
 
-    main {
-      padding: 40px;
-      max-width: 1600px;
-      margin: 0 auto;
-    }
-
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 24px;
-      margin-bottom: 48px;
-    }
-
-    .kpi-card {
-      border: 1px solid var(--black);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      background: var(--surface);
-      transition: transform 0.2s;
-    }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 48px; }
+    .kpi-card { border: 1px solid var(--black); padding: 24px; display: flex; flex-direction: column; justify-content: space-between; background: var(--surface); transition: transform 0.2s; }
     .kpi-card:hover { transform: translateY(-2px); }
+    .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; color: var(--muted); margin-bottom: 16px; }
+    .kpi-value { font-size: 32px; font-weight: 500; letter-spacing: -0.04em; font-family: var(--font-sans); }
 
-    .kpi-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 16px;
-    }
-
-    .kpi-value {
-      font-size: 32px;
-      font-weight: 500;
-      letter-spacing: -0.04em;
-      font-family: var(--font-sans);
-    }
-
-    .charts-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 24px;
-      margin-bottom: 48px;
-    }
-
-    .chart-container {
-      border: 1px solid var(--black);
-      padding: 32px;
-      height: 420px;
-      position: relative;
-      background: var(--surface);
-      display: flex;
-      flex-direction: column;
-    }
+    .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 48px; }
+    .chart-container { border: 1px solid var(--black); padding: 32px; height: 420px; position: relative; background: var(--surface); display: flex; flex-direction: column; }
     .chart-wrapper { flex: 1; position: relative; min-height: 0; }
 
-    /* TABS */
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid var(--black);
-      margin-bottom: 40px;
-      gap: 32px;
-      overflow-x: auto;
-    }
-    .tab {
-      padding: 0 0 16px 0;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      border-bottom: 3px solid transparent;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
+    .tabs { display: flex; border-bottom: 1px solid var(--black); margin-bottom: 40px; gap: 32px; overflow-x: auto; }
+    .tab { padding: 0 0 16px 0; cursor: pointer; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
     .tab:hover, .tab.active { color: var(--black); }
     .tab.active { border-bottom-color: var(--black); }
-
     .tab-content { display: none; animation: fadeIn 0.4s ease; }
     .tab-content.active { display: block; }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 24px;
-      letter-spacing: -0.02em;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .section-title { font-size: 18px; font-weight: 600; margin-bottom: 24px; letter-spacing: -0.02em; text-transform: uppercase; display: flex; align-items: center; gap: 12px; }
     .section-title::before { content: ''; display: block; width: 12px; height: 12px; background: var(--black); }
 
-    /* TABELAS GERAIS */
     .table-wrap { overflow-x: auto; border: 1px solid var(--black); margin-bottom: 32px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      border-bottom: 1px solid var(--black);
-      text-align: left;
-      padding: 16px 20px;
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 11px;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      background: #fafafa;
-      white-space: nowrap;
-    }
+    th { border-bottom: 1px solid var(--black); text-align: left; padding: 16px 20px; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; color: var(--muted); background: #fafafa; white-space: nowrap; }
     td { border-bottom: 1px solid var(--border); padding: 16px 20px; vertical-align: middle; }
     tr:hover td { background: #f9f9f9; }
     tfoot td { background: #f1f1f1; border-top: 2px solid var(--black); border-bottom: none; font-weight: 600; color: var(--black); }
     
     .mono { font-family: var(--font-mono); }
     .right { text-align: right; }
-
     .discrepancy-badge { display: inline-block; padding: 4px 8px; font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--black); background: #fafafa; }
     .discrepancy-negative .discrepancy-badge { background: var(--black); color: var(--bg); }
     .percent-badge { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
@@ -196,26 +61,17 @@
     .percent-green { color: var(--accent-green); }
     .percent-neutral { color: var(--muted); }
 
-    /* ESTILOS ESPECÍFICOS: S&OP SEMANAL */
     .sop-diff-positive { color: var(--accent-green); font-weight: 600; }
     .sop-diff-negative { color: var(--accent-red); font-weight: 600; }
     .sop-diff-neutral { color: var(--muted); }
-    
-    #table-sop th {
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--black);
-      text-align: center;
-    }
+    #table-sop th { border-right: 1px solid var(--border); border-bottom: 1px solid var(--black); text-align: center; }
     #table-sop td { border-right: 1px solid var(--border); text-align: right; font-family: var(--font-mono); }
-    #table-sop td:first-child, #table-sop th:first-child {
-      text-align: left; position: sticky; left: 0; background: var(--bg); border-right: 2px solid var(--black); font-family: var(--font-sans); font-weight: 600; z-index: 10;
-    }
+    #table-sop td:first-child, #table-sop th:first-child { text-align: left; position: sticky; left: 0; background: var(--bg); border-right: 2px solid var(--black); font-family: var(--font-sans); font-weight: 600; z-index: 10; }
     .sop-total-row td { background: var(--black) !important; color: white; font-weight: 600; border-right-color: #333; }
     .border-thick { border-left: 2px solid var(--black) !important; }
   </style>
 </head>
 <body>
-
   <header>
     <div class="brand">
       <h1>Dashboard Confiabilidade</h1>
@@ -223,51 +79,32 @@
     </div>
     <div class="meta-info">
       <div id="gen-date"></div>
-      <div>Dados Dinâmicos</div>
+      <div>Dados Dinâmicos Multi-Lineups</div>
     </div>
   </header>
 
   <main id="main-content">
-    
-    <!-- NAVEGAÇÃO ABAS -->
     <div class="tabs">
-      <div class="tab active" data-target="sop">S&OP Semanal</div>
+      <div class="tab active" data-target="sop">S&OP</div>
       <div class="tab" data-target="resumo">Resumo Consolidado</div>
-      <div class="tab" data-target="futuro">Futuro</div>
+      <div class="tab" data-target="unimar">UNIMAR</div>
       <div class="tab" data-target="transatlantica">Transatlântica</div>
       <div class="tab" data-target="wilson">Wilson Sons</div>
       <div class="tab" data-target="orion">Orion</div>
     </div>
 
-    <!-- ---------------------------------------------------- -->
-    <!-- ABA: S&OP SEMANAL (NOVA FUNCIONALIDADE)              -->
-    <!-- ---------------------------------------------------- -->
     <div id="sop" class="tab-content active">
-      <div class="section-title">Visão S&OP Semanal</div>
+      <div class="section-title">Visão S&OP Semanal Multi-Fontes</div>
       <p style="font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 24px; text-transform: uppercase;" id="sop-subtitle">Calculando período base...</p>
-
-      <!-- KPIs S&OP -->
-      <div class="kpi-grid" id="sop-kpi-container" style="margin-bottom: 40px; grid-template-columns: repeat(4, 1fr);">
-        <!-- Gerado via JS -->
-      </div>
-
-      <!-- TABELA S&OP -->
+      <div class="kpi-grid" id="sop-kpi-container" style="margin-bottom: 40px; grid-template-columns: repeat(4, 1fr);"></div>
       <div class="table-wrap">
         <table id="table-sop">
-          <thead>
-            <tr id="sop-thead-row1"></tr>
-            <tr id="sop-thead-row2"></tr>
-          </thead>
-          <tbody id="sop-tbody">
-            <!-- Gerado via JS -->
-          </tbody>
+          <thead><tr id="sop-thead-row1"></tr><tr id="sop-thead-row2"></tr></thead>
+          <tbody id="sop-tbody"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- ---------------------------------------------------- -->
-    <!-- ABAS ANTIGAS: COMPARATIVO                            -->
-    <!-- ---------------------------------------------------- -->
     <div id="resumo" class="tab-content">
       <div class="kpi-grid">
         <div class="kpi-card">
@@ -286,73 +123,17 @@
           <div class="kpi-label" id="kpi-fontes-names" style="margin-top:16px; margin-bottom:0;">-</div>
         </div>
       </div>
-
       <div class="charts-grid">
-        <div class="chart-container">
-          <div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas (MT)</div>
-          <div class="chart-wrapper"><canvas id="discChart"></canvas></div>
-        </div>
-        <div class="chart-container">
-          <div class="kpi-label" style="margin-bottom: 20px;">Ranking de Confiabilidade Geral</div>
-          <div class="chart-wrapper"><canvas id="rankingChart"></canvas></div>
-        </div>
+        <div class="chart-container"><div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas (MT)</div><div class="chart-wrapper"><canvas id="discChart"></canvas></div></div>
+        <div class="chart-container"><div class="kpi-label" style="margin-bottom: 20px;">Ranking de Confiabilidade Geral</div><div class="chart-wrapper"><canvas id="rankingChart"></canvas></div></div>
       </div>
-
       <h2 class="section-title">Top Discrepâncias Gerais</h2>
-      <div class="table-wrap">
-        <table id="table-resumo">
-          <thead>
-            <tr>
-              <th>Fonte Line Up</th>
-              <th>Produto</th>
-              <th class="right">Vol. Line Up</th>
-              <th class="right">Vol. SIACESP</th>
-              <th class="right">Discrepância</th>
-              <th class="right">% Disc.</th>
-            </tr>
-          </thead>
-          <tbody></tbody><tfoot></tfoot>
-        </table>
-      </div>
+      <div class="table-wrap"><table id="table-resumo"><thead><tr><th>Fonte Line Up</th><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
     </div>
-
-    <div id="futuro" class="tab-content">
-      <h2 class="section-title">Comparação: FUTURO vs SIACESP</h2>
-      <div class="table-wrap">
-        <table id="table-futuro">
-          <thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead>
-          <tbody></tbody><tfoot></tfoot>
-        </table>
-      </div>
-    </div>
-    <div id="transatlantica" class="tab-content">
-      <h2 class="section-title">Comparação: TRANSATLÂNTICA vs SIACESP</h2>
-      <div class="table-wrap">
-        <table id="table-transatlantica">
-          <thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead>
-          <tbody></tbody><tfoot></tfoot>
-        </table>
-      </div>
-    </div>
-    <div id="wilson" class="tab-content">
-      <h2 class="section-title">Comparação: WILSON SONS vs SIACESP</h2>
-      <div class="table-wrap">
-        <table id="table-wilson">
-          <thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead>
-          <tbody></tbody><tfoot></tfoot>
-        </table>
-      </div>
-    </div>
-    <div id="orion" class="tab-content">
-      <h2 class="section-title">Comparação: ORION vs SIACESP</h2>
-      <div class="table-wrap">
-        <table id="table-orion">
-          <thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead>
-          <tbody></tbody><tfoot></tfoot>
-        </table>
-      </div>
-    </div>
-
+    <div id="unimar" class="tab-content"><h2 class="section-title">Comparação: UNIMAR vs SIACESP</h2><div class="table-wrap"><table id="table-unimar"><thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>
+    <div id="transatlantica" class="tab-content"><h2 class="section-title">Comparação: TRANSATLÂNTICA vs SIACESP</h2><div class="table-wrap"><table id="table-transatlantica"><thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>
+    <div id="wilson" class="tab-content"><h2 class="section-title">Comparação: WILSON SONS vs SIACESP</h2><div class="table-wrap"><table id="table-wilson"><thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>
+    <div id="orion" class="tab-content"><h2 class="section-title">Comparação: ORION vs SIACESP</h2><div class="table-wrap"><table id="table-orion"><thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>
   </main>
 
   <script>
@@ -368,7 +149,6 @@
         return;
       }
 
-      // Utils de formatação
       const formatNumber = (num) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
       const formatCompact = (num) => new Intl.NumberFormat('pt-BR', { notation: "compact", maximumFractionDigits: 2 }).format(num);
       const calcPercent = (disc, base) => { if (!base || base === 0) return null; return (disc / base) * 100; };
@@ -380,24 +160,38 @@
       };
 
       // ==========================================
-      // LÓGICA DA ABA S&OP SEMANAL
+      // LÓGICA DA ABA S&OP SEMANAL (SCALABLE)
       // ==========================================
       function renderizarSOP() {
-        // Usa mock data se o Python ainda não estiver enviando as bases brutas
-        const rawSiacesp = dashboardData.siacesp_raw && dashboardData.siacesp_raw.length > 0 ? dashboardData.siacesp_raw : [];
-        const rawLineup = dashboardData.lineup_raw && dashboardData.lineup_raw.length > 0 ? dashboardData.lineup_raw : [];
+        const rawSiacesp = dashboardData.siacesp_raw || [];
+        const rawLineup = dashboardData.lineup_raw || [];
 
         if(rawSiacesp.length === 0 || rawLineup.length === 0) {
-            document.getElementById('sop-tbody').innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 40px;">Dados granulares (siacesp_raw e lineup_raw) não encontrados. Atualize o script Python.</td></tr>`;
+            document.getElementById('sop-tbody').innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 40px;">⚠️ Dados granulares não encontrados.</td></tr>`;
             return;
         }
 
+        // Extratores com tolerância nativa para diferentes colunas 
+        const getSiacespDate = (row) => row["Z_PERÍODO"] || row["PERÍODO"] || row.data_operacao || row.Data;
+        const getSiacespVol  = (row) => parseFloat(row["VOLUME"] || row.volume || row.Volume) || 0;
+        const getSiacespProd = (row) => row["Y_PRODUTO PARA"] || row.PRODUTO || row.produto || row.Produto;
+
+        const getFonte         = (row) => row["FONTE_DADOS"] || "DESCONHECIDA";
+        const getLineupPosDate = (row) => row["DATA POSIÇÃO"] || row["DATA_POSIÇÃO"] || row["Z_DATA_POSIÇÃO"] || row.data_posicao || row.Data;
+        const getLineupEta     = (row) => row["ETA"] || row["Z_ETA"] || row.eta;
+        // Tratamento de variações numéricas (Qtty, Quantity, Tonnage, Weight, etc)
+        const getLineupVol     = (row) => {
+            const val = row["Qtty"] || row["QUANTITY"] || row["WEIGHT"] || row["TONNAGE"] || row["VOLUME"] || row.volume || row.Volume;
+            return parseFloat(val) || 0;
+        };
+        const getLineupProd    = (row) => row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.PRODUTO || row.produto || row.Produto;
+
         const getMesAno = (dateStr) => {
           if(!dateStr) return '1900-01';
+          dateStr = String(dateStr);
           try {
               if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
               if (dateStr.includes(' ')) dateStr = dateStr.split(' ')[0];
-              // Se for dd/mm/yyyy
               if (dateStr.includes('/')) {
                   let parts = dateStr.split('/');
                   if(parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2,'0')}`;
@@ -416,19 +210,18 @@
 
         const getMonthName = (yyyyMm) => {
           const [y, m] = yyyyMm.split('-');
-          const date = new Date(y, m - 1, 1);
-          return date.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase();
+          return new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase();
         };
 
         const padronizarProduto = (nome) => {
           if (!nome) return 'OUTROS';
           const n = nome.toUpperCase().trim();
-          if (n.startsWith('MES')) return 'NP'; // Regra Especial S&OP
+          if (n.startsWith('MES')) return 'NP'; // NP Mapping rule
           return n;
         };
 
         // Identificar Último Mês SIACESP
-        const mesesSiacesp = [...new Set(rawSiacesp.map(d => getMesAno(d.data_operacao || d.Data)))].sort();
+        const mesesSiacesp = [...new Set(rawSiacesp.map(d => getMesAno(getSiacespDate(d))))].filter(m => m && m !== '1900-01').sort();
         const ultimoMesSiacesp = mesesSiacesp[mesesSiacesp.length - 1];
         const anoAtual = parseInt(ultimoMesSiacesp.split('-')[0]);
         const anoAnterior = anoAtual - 1;
@@ -438,48 +231,105 @@
         const mes3 = addMonths(ultimoMesSiacesp, 3);
         const mesesAlvo = [mes1, mes2, mes3];
 
-        document.getElementById('sop-subtitle').textContent = `Base Fechada SIACESP: ${ultimoMesSiacesp} | Projeção Line Up: ${getMonthName(mes1)} a ${getMonthName(mes3)}`;
+        document.getElementById('sop-subtitle').textContent = `Base Fechada SIACESP: ${ultimoMesSiacesp} | Projeção Multi-Lineup: ${getMonthName(mes1)} a ${getMonthName(mes3)}`;
 
-        // Identificar Semanas do Lineup
-        const datasPosicao = [...new Set(rawLineup.map(d => (d.data_posicao || d.Data || '').split(' ')[0]))].filter(d => d).sort();
-        const semanaAtual = datasPosicao[datasPosicao.length - 1];
-        const semanaPassada = datasPosicao.length > 1 ? datasPosicao[datasPosicao.length - 2] : semanaAtual;
-
-        // Processar Lineup
-        const lineupAtual = { total: [0,0,0], produtos: {} };
-        const lineupPassado = { total: [0,0,0], produtos: {} };
-
-        const processarLineup = (dados, alvoObjeto, dataFiltro) => {
-          dados.forEach(row => {
-            const dtPos = (row.data_posicao || row.Data || '').split(' ')[0];
-            if (dtPos === dataFiltro) {
-              const mesEta = getMesAno(row.eta || row.ETA);
-              const indexMes = mesesAlvo.indexOf(mesEta);
-              if (indexMes > -1) {
-                const prod = padronizarProduto(row.produto || row.Produto);
-                const vol = parseFloat(row.volume || row.Volume || row.VOLUME) || 0;
-                alvoObjeto.total[indexMes] += vol;
-                if(!alvoObjeto.produtos[prod]) alvoObjeto.produtos[prod] = [0,0,0];
-                alvoObjeto.produtos[prod][indexMes] += vol;
-              }
+        // ===============================================
+        // DESCOBRIR SEMANAS POR FONTE (ASSÍNCRONAS)
+        // ===============================================
+        const datasPorFonte = {};
+        rawLineup.forEach(row => {
+            const f = getFonte(row);
+            const dtRaw = getLineupPosDate(row);
+            const dtPos = dtRaw ? dtRaw.split(' ')[0] : null;
+            if (dtPos) {
+                if(!datasPorFonte[f]) datasPorFonte[f] = new Set();
+                datasPorFonte[f].add(dtPos);
             }
-          });
+        });
+
+        const semanaMapAtual = {};
+        const semanaMapPassada = {};
+        Object.keys(datasPorFonte).forEach(f => {
+            const sorted = Array.from(datasPorFonte[f]).sort();
+            semanaMapAtual[f] = sorted[sorted.length - 1];
+            semanaMapPassada[f] = sorted.length > 1 ? sorted[sorted.length - 2] : sorted[sorted.length - 1];
+        });
+
+        // ===============================================
+        // PROCESSAMENTO COM MÉDIAS MÚLTIPLAS
+        // ===============================================
+        const configSop = dashboardData.config_sop || {};
+        const todasFontesDescob = [...new Set(rawLineup.map(getFonte).filter(Boolean))];
+        const getConfigMes = (mesIdx) => {
+            const conf = configSop[mesIdx + 1];
+            return (conf && conf.length > 0) ? conf : todasFontesDescob;
         };
 
-        processarLineup(rawLineup, lineupAtual, semanaAtual);
-        processarLineup(rawLineup, lineupPassado, semanaPassada);
+        const processarLineup = (dados, isAtual) => {
+            let aggregated = { total: [0,0,0], produtos: {} };
+            // Temporários para somar antes de tirar a média
+            let temp = [
+                { fontes: {}, produtos: {} },
+                { fontes: {}, produtos: {} },
+                { fontes: {}, produtos: {} }
+            ];
+
+            dados.forEach(row => {
+                const fonte = getFonte(row);
+                const dtPosRaw = getLineupPosDate(row);
+                const dtPos = dtPosRaw ? dtPosRaw.split(' ')[0] : null;
+                
+                const dataAlvo = isAtual ? semanaMapAtual[fonte] : semanaMapPassada[fonte];
+                
+                if (dtPos === dataAlvo) {
+                    const mesEta = getMesAno(getLineupEta(row));
+                    const idxMes = mesesAlvo.indexOf(mesEta);
+                    
+                    if (idxMes > -1) {
+                        const fontesPermitidas = getConfigMes(idxMes);
+                        if (fontesPermitidas.includes(fonte)) {
+                            const prod = padronizarProduto(getLineupProd(row));
+                            const vol = getLineupVol(row);
+                            
+                            temp[idxMes].fontes[fonte] = (temp[idxMes].fontes[fonte] || 0) + vol;
+                            if (!temp[idxMes].produtos[prod]) temp[idxMes].produtos[prod] = {};
+                            temp[idxMes].produtos[prod][fonte] = (temp[idxMes].produtos[prod][fonte] || 0) + vol;
+                        }
+                    }
+                }
+            });
+
+            // Aplica as Frações (Soma / Qtd de Fontes)
+            mesesAlvo.forEach((mes, idx) => {
+                const fontesPermitidas = getConfigMes(idx);
+                const divisor = fontesPermitidas.length || 1;
+                
+                let sumTotal = Object.values(temp[idx].fontes).reduce((a, b) => a + b, 0);
+                aggregated.total[idx] = sumTotal / divisor;
+                
+                Object.keys(temp[idx].produtos).forEach(prod => {
+                    let sumProd = Object.values(temp[idx].produtos[prod]).reduce((a, b) => a + b, 0);
+                    if (!aggregated.produtos[prod]) aggregated.produtos[prod] = [0, 0, 0];
+                    aggregated.produtos[prod][idx] = sumProd / divisor;
+                });
+            });
+
+            return aggregated;
+        };
+
+        const lineupAtual = processarLineup(rawLineup, true);
+        const lineupPassado = processarLineup(rawLineup, false);
 
         // Processar SIACESP (YTD)
         const calcSiacespYTD = (dados, ano, mesLimite) => {
           const limiteAnoMes = `${ano}-${mesLimite.split('-')[1]}`;
-          let total = 0;
-          let prodTotais = {};
-          
+          let total = 0; let prodTotais = {};
           dados.forEach(row => {
-            const mesRow = getMesAno(row.data_operacao || row.Data);
+            const dtRaw = getSiacespDate(row);
+            const mesRow = getMesAno(dtRaw);
             if (mesRow >= `${ano}-01` && mesRow <= limiteAnoMes) {
-              const vol = parseFloat(row.volume || row.Volume || row.VOLUME) || 0;
-              const prod = padronizarProduto(row.produto || row.Produto);
+              const vol = getSiacespVol(row);
+              const prod = padronizarProduto(getSiacespProd(row));
               total += vol;
               if(!prodTotais[prod]) prodTotais[prod] = 0;
               prodTotais[prod] += vol;
@@ -511,25 +361,30 @@
         mesesAlvo.forEach((mes, idx) => {
           total3MesesAtual += lineupAtual.total[idx];
           total3MesesPassado += lineupPassado.total[idx];
+          const fontesDoMes = getConfigMes(idx).join(', ');
+          
           kpiHtml += `
             <div class="kpi-card" style="background: var(--sop-header-bg);">
-              <div class="kpi-label">Lineup ${getMonthName(mes)}</div>
+              <div class="kpi-label">Proj. ${getMonthName(mes)}</div>
               <div class="kpi-value">${formatNumber(lineupAtual.total[idx])} t</div>
-              <div class="kpi-label" style="margin-top:16px; margin-bottom:0; text-transform:none;">Vs Sem. Anterior: ${renderDiff(lineupAtual.total[idx], lineupPassado.total[idx])}</div>
+              <div class="kpi-label" style="margin-top:16px; margin-bottom:0; text-transform:none;">
+                Dif: ${renderDiff(lineupAtual.total[idx], lineupPassado.total[idx])}<br>
+                <span style="font-size:10px; color:var(--muted)">Alocação: ${fontesDoMes}</span>
+              </div>
             </div>
           `;
         });
 
         kpiHtml += `
           <div class="kpi-card" style="border: 2px solid var(--black);">
-            <div class="kpi-label" style="color: var(--black);">Total Lineup S&OP (3 Meses)</div>
+            <div class="kpi-label" style="color: var(--black);">Trimestre Projetado S&OP</div>
             <div class="kpi-value">${formatNumber(total3MesesAtual)} t</div>
             <div class="kpi-label" style="margin-top:16px; margin-bottom:0; text-transform:none;">Vs Sem. Anterior: ${renderDiff(total3MesesAtual, total3MesesPassado)}</div>
           </div>
         `;
         kpiContainer.innerHTML = kpiHtml;
 
-        // Renderizar Cabeçalhos Tabela
+        // Renderizar Tabela
         document.getElementById('sop-thead-row1').innerHTML = `
           <th rowspan="2">PRODUTO</th>
           <th colspan="2">JUNHO</th>
@@ -547,7 +402,6 @@
           <th class="border-thick">Proj ${anoAtual}</th><th>${anoAnterior}</th><th>Var %</th>
         `.replace(/Dif. 2025/g, `Dif. ${anoAnterior}`);
 
-        // Renderizar Linhas
         const produtosObrigatorios = ['MOP', 'SAM', 'UREIA', 'MAP', 'NP', 'SSP', 'TSP'];
         let tbodyHtml = '';
 
@@ -579,7 +433,6 @@
               <td>${formatNumber(lAt[0])}</td> <td>${renderDiff(lAt[0], lPa[0])}</td>
               <td>${formatNumber(lAt[1])}</td> <td>${renderDiff(lAt[1], lPa[1])}</td>
               <td>${formatNumber(lAt[2])}</td> <td>${renderDiff(lAt[2], lPa[2])}</td>
-              
               <td class="border-thick">${formatNumber(cen1Proj)}</td> <td>${formatNumber(a1)}</td> <td>${renderVarPerc(cen1Proj, a1)}</td>
               <td class="border-thick">${formatNumber(cen2Proj)}</td> <td>${formatNumber(a2)}</td> <td>${renderVarPerc(cen2Proj, a2)}</td>
               <td class="border-thick">${formatNumber(cen3Proj)}</td> <td>${formatNumber(a3)}</td> <td>${renderVarPerc(cen3Proj, a3)}</td>
@@ -595,7 +448,6 @@
       // ==========================================
       // LÓGICA DAS ABAS COMPARATIVAS ANTIGAS
       // ==========================================
-      
       let volTotal = 0;
       if (dashboardData.siacesp_base && dashboardData.siacesp_base.length > 0) {
         volTotal = dashboardData.siacesp_base.reduce((acc, row) => acc + (row["Volume_SIACESP"] || 0), 0);
@@ -650,42 +502,28 @@
       };
 
       if(dashboardData.resumo) populateTable('table-resumo', dashboardData.resumo, true);
-      if(dashboardData.futuro) populateTable('table-futuro', dashboardData.futuro);
+      if(dashboardData.unimar) populateTable('table-unimar', dashboardData.unimar);
       if(dashboardData.transatlantica) populateTable('table-transatlantica', dashboardData.transatlantica);
       if(dashboardData.wilson) populateTable('table-wilson', dashboardData.wilson);
       if(dashboardData.orion) populateTable('table-orion', dashboardData.orion);
 
-      // Gráficos e Ranking
       if(dashboardData.resumo) {
         const validData = dashboardData.resumo.filter(d => d["Y_PRODUTO PARA"]);
         const chartData1 = [...validData].sort((a, b) => Math.abs(b["Discrepancia"] || 0) - Math.abs(a["Discrepancia"] || 0)).slice(0, 8);
         if(chartData1.length > 0) {
           new Chart(document.getElementById('discChart').getContext('2d'), {
             type: 'bar',
-            data: {
-              labels: chartData1.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`),
-              datasets: [{ data: chartData1.map(d => d["Discrepancia"] || 0), backgroundColor: '#111111' }]
-            },
+            data: { labels: chartData1.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`), datasets: [{ data: chartData1.map(d => d["Discrepancia"] || 0), backgroundColor: '#111111' }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
           });
         }
       }
 
-      const agentStats = [
-        { name: 'Futuro', data: dashboardData.futuro },
-        { name: 'Transatlântica', data: dashboardData.transatlantica },
-        { name: 'Wilson Sons', data: dashboardData.wilson },
-        { name: 'Orion', data: dashboardData.orion }
-      ];
-
+      const agentStats = [{ name: 'UNIMAR', data: dashboardData.unimar }, { name: 'Transatlântica', data: dashboardData.transatlantica }, { name: 'Wilson Sons', data: dashboardData.wilson }, { name: 'Orion', data: dashboardData.orion }];
       const rankingData = [];
       agentStats.forEach(agent => {
         let sLineUp = 0; let sSiacesp = 0;
-        if(agent.data) {
-          agent.data.forEach(r => {
-            if(r["Y_PRODUTO PARA"]) { sLineUp += (r["Volume_LineUp"] || 0); sSiacesp += (r["Volume_SIACESP"] || 0); }
-          });
-        }
+        if(agent.data) { agent.data.forEach(r => { if(r["Y_PRODUTO PARA"]) { sLineUp += (r["Volume_LineUp"] || 0); sSiacesp += (r["Volume_SIACESP"] || 0); }}); }
         const sDisc = sLineUp - sSiacesp;
         const percent = calcPercent(sDisc, sSiacesp) || 0;
         if(sSiacesp > 0) rankingData.push({ name: agent.name, percent: percent, absPercent: Math.abs(percent) });
@@ -696,18 +534,13 @@
         const bestAgent = rankingData[0];
         document.getElementById('kpi-best-agent').textContent = bestAgent.name;
         document.getElementById('kpi-best-agent-label').textContent = `Divergência: ${Math.abs(bestAgent.percent).toFixed(2)}%`;
-        
         new Chart(document.getElementById('rankingChart').getContext('2d'), {
           type: 'bar',
-          data: {
-            labels: rankingData.map(d => d.name),
-            datasets: [{ data: rankingData.map(d => d.percent), backgroundColor: rankingData.map((d, i) => i === 0 ? '#111111' : '#888888') }]
-          },
+          data: { labels: rankingData.map(d => d.name), datasets: [{ data: rankingData.map(d => d.percent), backgroundColor: rankingData.map((d, i) => i === 0 ? '#111111' : '#888888') }] },
           options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
       }
 
-      // Sistema de Abas
       document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
           document.querySelectorAll('.tab, .tab-content').forEach(e => e.classList.remove('active'));
@@ -716,7 +549,6 @@
         });
       });
 
-      // Disparar Render S&OP
       renderizarSOP();
     });
   </script>
