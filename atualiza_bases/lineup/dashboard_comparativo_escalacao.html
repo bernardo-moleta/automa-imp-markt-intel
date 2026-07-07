@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Análise Comparativa de Escalação</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <!-- PONTE DE DADOS DO PYTHON -->
   <script src="dados_dashboard.js"></script> 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     :root {
       --bg: #ffffff;
@@ -18,6 +19,11 @@
       --black: #000000;
       --font-sans: 'Inter', -apple-system, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
+      
+      /* Cores S&OP */
+      --accent-green: #2e7d32;
+      --accent-red: #d32f2f;
+      --sop-header-bg: #f5f5f5;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,7 +37,6 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Minimalist / Brutalist Header */
     header {
       border-bottom: 2px solid var(--black);
       padding: 32px 40px;
@@ -52,33 +57,24 @@
       text-transform: uppercase;
     }
 
-    .brand p {
+    .brand p, .meta-info {
       font-family: var(--font-mono);
       font-size: 12px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-
-    .meta-info {
-      text-align: right;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+    .meta-info { text-align: right; font-size: 11px; }
 
     main {
       padding: 40px;
-      max-width: 1440px;
+      max-width: 1600px;
       margin: 0 auto;
     }
 
-    /* KPI Grid */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 24px;
       margin-bottom: 48px;
     }
@@ -92,10 +88,7 @@
       background: var(--surface);
       transition: transform 0.2s;
     }
-    
-    .kpi-card:hover {
-      transform: translateY(-2px);
-    }
+    .kpi-card:hover { transform: translateY(-2px); }
 
     .kpi-label {
       font-size: 11px;
@@ -107,13 +100,31 @@
     }
 
     .kpi-value {
-      font-size: 40px;
+      font-size: 32px;
       font-weight: 500;
       letter-spacing: -0.04em;
-      font-family: var(--font-mono);
+      font-family: var(--font-sans);
     }
 
-    /* Tabs Layout */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .chart-container {
+      border: 1px solid var(--black);
+      padding: 32px;
+      height: 420px;
+      position: relative;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+    }
+    .chart-wrapper { flex: 1; position: relative; min-height: 0; }
+
+    /* TABS */
     .tabs {
       display: flex;
       border-bottom: 1px solid var(--black);
@@ -121,7 +132,6 @@
       gap: 32px;
       overflow-x: auto;
     }
-
     .tab {
       padding: 0 0 16px 0;
       cursor: pointer;
@@ -134,37 +144,15 @@
       transition: all 0.2s;
       white-space: nowrap;
     }
+    .tab:hover, .tab.active { color: var(--black); }
+    .tab.active { border-bottom-color: var(--black); }
 
-    .tab:hover {
-      color: var(--black);
-    }
-
-    .tab.active {
-      color: var(--black);
-      border-bottom-color: var(--black);
-    }
-
-    .tab-content {
-      display: none;
-      animation: fadeIn 0.4s ease;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
+    .tab-content { display: none; animation: fadeIn 0.4s ease; }
+    .tab-content.active { display: block; }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
-    }
-
-    .chart-container {
-      border: 1px solid var(--black);
-      padding: 32px;
-      margin-bottom: 48px;
-      height: 400px;
-      position: relative;
-      background: var(--surface);
     }
 
     .section-title {
@@ -177,27 +165,11 @@
       align-items: center;
       gap: 12px;
     }
-    
-    .section-title::before {
-      content: '';
-      display: block;
-      width: 12px;
-      height: 12px;
-      background: var(--black);
-    }
+    .section-title::before { content: ''; display: block; width: 12px; height: 12px; background: var(--black); }
 
-    /* Table Design */
-    .table-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--black);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
+    /* TABELAS GERAIS */
+    .table-wrap { overflow-x: auto; border: 1px solid var(--black); margin-bottom: 32px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th {
       border-bottom: 1px solid var(--black);
       text-align: left;
@@ -210,42 +182,36 @@
       background: #fafafa;
       white-space: nowrap;
     }
+    td { border-bottom: 1px solid var(--border); padding: 16px 20px; vertical-align: middle; }
+    tr:hover td { background: #f9f9f9; }
+    tfoot td { background: #f1f1f1; border-top: 2px solid var(--black); border-bottom: none; font-weight: 600; color: var(--black); }
+    
+    .mono { font-family: var(--font-mono); }
+    .right { text-align: right; }
 
-    td {
-      border-bottom: 1px solid var(--border);
-      padding: 16px 20px;
-      vertical-align: middle;
-    }
+    .discrepancy-badge { display: inline-block; padding: 4px 8px; font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--black); background: #fafafa; }
+    .discrepancy-negative .discrepancy-badge { background: var(--black); color: var(--bg); }
+    .percent-badge { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+    .percent-red { color: var(--accent-red); }
+    .percent-green { color: var(--accent-green); }
+    .percent-neutral { color: var(--muted); }
 
-    tr:last-child td {
-      border-bottom: none;
+    /* ESTILOS ESPECÍFICOS: S&OP SEMANAL */
+    .sop-diff-positive { color: var(--accent-green); font-weight: 600; }
+    .sop-diff-negative { color: var(--accent-red); font-weight: 600; }
+    .sop-diff-neutral { color: var(--muted); }
+    
+    #table-sop th {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--black);
+      text-align: center;
     }
-
-    tr:hover td {
-      background: #f5f5f5;
+    #table-sop td { border-right: 1px solid var(--border); text-align: right; font-family: var(--font-mono); }
+    #table-sop td:first-child, #table-sop th:first-child {
+      text-align: left; position: sticky; left: 0; background: var(--bg); border-right: 2px solid var(--black); font-family: var(--font-sans); font-weight: 600; z-index: 10;
     }
-
-    .mono {
-      font-family: var(--font-mono);
-    }
-
-    .right {
-      text-align: right;
-    }
-
-    .discrepancy-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      border: 1px solid var(--black);
-      background: #fafafa;
-    }
-
-    .discrepancy-negative .discrepancy-badge {
-      background: var(--black);
-      color: var(--bg);
-    }
+    .sop-total-row td { background: var(--black) !important; color: white; font-weight: 600; border-right-color: #333; }
+    .border-thick { border-left: 2px solid var(--black) !important; }
   </style>
 </head>
 <body>
@@ -262,38 +228,76 @@
   </header>
 
   <main id="main-content">
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-label">Maior Discrepância Registrada</div>
-        <div class="kpi-value" id="kpi-max-disc">-</div>
-        <div class="kpi-label" id="kpi-max-disc-label" style="margin-top:16px; margin-bottom:0;">Processando...</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Vol. Total Base Siacesp</div>
-        <div class="kpi-value" id="kpi-vol-total">-</div>
-        <div class="kpi-label" style="margin-top:16px; margin-bottom:0;">Toneladas (MT)</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Fontes Line Up Analisadas</div>
-        <div class="kpi-value" id="kpi-fontes-count">-</div>
-        <div class="kpi-label" id="kpi-fontes-names" style="margin-top:16px; margin-bottom:0;">-</div>
-      </div>
-    </div>
-
-    <div class="chart-container">
-      <div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas por Agente/Produto</div>
-      <canvas id="discChart"></canvas>
-    </div>
-
+    
+    <!-- NAVEGAÇÃO ABAS -->
     <div class="tabs">
-      <div class="tab active" data-target="resumo">Resumo Consolidado</div>
+      <div class="tab active" data-target="sop">S&OP Semanal</div>
+      <div class="tab" data-target="resumo">Resumo Consolidado</div>
       <div class="tab" data-target="futuro">Futuro</div>
       <div class="tab" data-target="transatlantica">Transatlântica</div>
       <div class="tab" data-target="wilson">Wilson Sons</div>
       <div class="tab" data-target="orion">Orion</div>
     </div>
 
-    <div id="resumo" class="tab-content active">
+    <!-- ---------------------------------------------------- -->
+    <!-- ABA: S&OP SEMANAL (NOVA FUNCIONALIDADE)              -->
+    <!-- ---------------------------------------------------- -->
+    <div id="sop" class="tab-content active">
+      <div class="section-title">Visão S&OP Semanal</div>
+      <p style="font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 24px; text-transform: uppercase;" id="sop-subtitle">Calculando período base...</p>
+
+      <!-- KPIs S&OP -->
+      <div class="kpi-grid" id="sop-kpi-container" style="margin-bottom: 40px; grid-template-columns: repeat(4, 1fr);">
+        <!-- Gerado via JS -->
+      </div>
+
+      <!-- TABELA S&OP -->
+      <div class="table-wrap">
+        <table id="table-sop">
+          <thead>
+            <tr id="sop-thead-row1"></tr>
+            <tr id="sop-thead-row2"></tr>
+          </thead>
+          <tbody id="sop-tbody">
+            <!-- Gerado via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------------------- -->
+    <!-- ABAS ANTIGAS: COMPARATIVO                            -->
+    <!-- ---------------------------------------------------- -->
+    <div id="resumo" class="tab-content">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Agente Mais Confiável</div>
+          <div class="kpi-value" id="kpi-best-agent" style="text-transform: uppercase;">-</div>
+          <div class="kpi-label" id="kpi-best-agent-label" style="margin-top:16px; margin-bottom:0;">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Vol. Total Base Siacesp</div>
+          <div class="kpi-value" id="kpi-vol-total">-</div>
+          <div class="kpi-label" style="margin-top:16px; margin-bottom:0;">Toneladas (MT)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Fontes Line Up Analisadas</div>
+          <div class="kpi-value" id="kpi-fontes-count">-</div>
+          <div class="kpi-label" id="kpi-fontes-names" style="margin-top:16px; margin-bottom:0;">-</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas (MT)</div>
+          <div class="chart-wrapper"><canvas id="discChart"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Ranking de Confiabilidade Geral</div>
+          <div class="chart-wrapper"><canvas id="rankingChart"></canvas></div>
+        </div>
+      </div>
+
       <h2 class="section-title">Top Discrepâncias Gerais</h2>
       <div class="table-wrap">
         <table id="table-resumo">
@@ -301,12 +305,13 @@
             <tr>
               <th>Fonte Line Up</th>
               <th>Produto</th>
-              <th class="right">Volume Line Up</th>
-              <th class="right">Volume SIACESP</th>
+              <th class="right">Vol. Line Up</th>
+              <th class="right">Vol. SIACESP</th>
               <th class="right">Discrepância</th>
+              <th class="right">% Disc.</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody></tbody><tfoot></tfoot>
         </table>
       </div>
     </div>
@@ -315,66 +320,35 @@
       <h2 class="section-title">Comparação: FUTURO vs SIACESP</h2>
       <div class="table-wrap">
         <table id="table-futuro">
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th class="right">Volume Line Up</th>
-              <th class="right">Volume SIACESP</th>
-              <th class="right">Discrepância</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
+          <thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead>
+          <tbody></tbody><tfoot></tfoot>
         </table>
       </div>
     </div>
-
     <div id="transatlantica" class="tab-content">
       <h2 class="section-title">Comparação: TRANSATLÂNTICA vs SIACESP</h2>
       <div class="table-wrap">
         <table id="table-transatlantica">
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th class="right">Volume Line Up</th>
-              <th class="right">Volume SIACESP</th>
-              <th class="right">Discrepância</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
+          <thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead>
+          <tbody></tbody><tfoot></tfoot>
         </table>
       </div>
     </div>
-
     <div id="wilson" class="tab-content">
       <h2 class="section-title">Comparação: WILSON SONS vs SIACESP</h2>
       <div class="table-wrap">
         <table id="table-wilson">
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th class="right">Volume Line Up</th>
-              <th class="right">Volume SIACESP</th>
-              <th class="right">Discrepância</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
+          <thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead>
+          <tbody></tbody><tfoot></tfoot>
         </table>
       </div>
     </div>
-
     <div id="orion" class="tab-content">
       <h2 class="section-title">Comparação: ORION vs SIACESP</h2>
       <div class="table-wrap">
         <table id="table-orion">
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th class="right">Volume Line Up</th>
-              <th class="right">Volume SIACESP</th>
-              <th class="right">Discrepância</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
+          <thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead>
+          <tbody></tbody><tfoot></tfoot>
         </table>
       </div>
     </div>
@@ -385,152 +359,365 @@
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('gen-date').textContent = `LIDO EM: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`;
 
-      // 1. Verificação de Segurança (Garante que o Python rodou)
       if (typeof dashboardData === 'undefined') {
         document.getElementById('main-content').innerHTML = `
           <div style="border: 1px solid var(--black); padding: 40px; text-align: center;">
             <h2 style="font-size: 24px; margin-bottom: 16px;">⚠️ Base de Dados Não Encontrada</h2>
             <p style="color: var(--muted); font-family: var(--font-mono);">O arquivo <b>dados_dashboard.js</b> não foi carregado pelo HTML.</p>
-            <p style="margin-top: 16px;"><b>Passo a Passo:</b><br>1. Adicione a função de exportação no seu script Python.<br>2. Rode o Python para gerar o arquivo .js.<br>3. Atualize esta página.</p>
-          </div>
-        `;
+          </div>`;
         return;
       }
 
-      // Formatadores
+      // Utils de formatação
       const formatNumber = (num) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
       const formatCompact = (num) => new Intl.NumberFormat('pt-BR', { notation: "compact", maximumFractionDigits: 2 }).format(num);
+      const calcPercent = (disc, base) => { if (!base || base === 0) return null; return (disc / base) * 100; };
+      const renderPercentHtml = (percent) => {
+        if (percent === null) return `<span class="percent-neutral">Sem Ref.</span>`;
+        const prefix = percent > 0 ? '+' : '';
+        const colorClass = Math.abs(percent) > 5 ? (percent < 0 ? 'percent-red' : 'percent-green') : 'percent-neutral';
+        return `<span class="percent-badge ${colorClass}">${prefix}${percent.toFixed(2)}%</span>`;
+      };
 
-      // --- CÁLCULO DE KPIs DINÂMICOS ---
-      
-      // KPI 1: Maior Discrepância
-      let maxDiscObj = null;
-      let maxDiscVal = -1;
-      
-      dashboardData.resumo.forEach(r => {
-        if(!r["Y_PRODUTO PARA"]) return;
-        const valAbs = Math.abs(r["Discrepancia"] || 0);
-        if (valAbs > maxDiscVal) {
-          maxDiscVal = valAbs;
-          maxDiscObj = r;
+      // ==========================================
+      // LÓGICA DA ABA S&OP SEMANAL
+      // ==========================================
+      function renderizarSOP() {
+        // Usa mock data se o Python ainda não estiver enviando as bases brutas
+        const rawSiacesp = dashboardData.siacesp_raw && dashboardData.siacesp_raw.length > 0 ? dashboardData.siacesp_raw : [];
+        const rawLineup = dashboardData.lineup_raw && dashboardData.lineup_raw.length > 0 ? dashboardData.lineup_raw : [];
+
+        if(rawSiacesp.length === 0 || rawLineup.length === 0) {
+            document.getElementById('sop-tbody').innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 40px;">Dados granulares (siacesp_raw e lineup_raw) não encontrados. Atualize o script Python.</td></tr>`;
+            return;
         }
-      });
 
-      if (maxDiscObj) {
-        document.getElementById('kpi-max-disc').textContent = formatCompact(maxDiscObj["Discrepancia"]);
-        document.getElementById('kpi-max-disc-label').textContent = `${maxDiscObj["Y_PRODUTO PARA"]} / ${maxDiscObj["Fonte Line Up"]}`;
+        const getMesAno = (dateStr) => {
+          if(!dateStr) return '1900-01';
+          try {
+              if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+              if (dateStr.includes(' ')) dateStr = dateStr.split(' ')[0];
+              // Se for dd/mm/yyyy
+              if (dateStr.includes('/')) {
+                  let parts = dateStr.split('/');
+                  if(parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2,'0')}`;
+              }
+              return dateStr.substring(0, 7);
+          } catch(e){ return '1900-01'; }
+        };
+        
+        const addMonths = (yyyyMm, monthsToAdd) => {
+          let [year, month] = yyyyMm.split('-').map(Number);
+          month += monthsToAdd;
+          while (month > 12) { month -= 12; year += 1; }
+          while (month < 1) { month += 12; year -= 1; }
+          return `${year}-${String(month).padStart(2, '0')}`;
+        };
+
+        const getMonthName = (yyyyMm) => {
+          const [y, m] = yyyyMm.split('-');
+          const date = new Date(y, m - 1, 1);
+          return date.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase();
+        };
+
+        const padronizarProduto = (nome) => {
+          if (!nome) return 'OUTROS';
+          const n = nome.toUpperCase().trim();
+          if (n.startsWith('MES')) return 'NP'; // Regra Especial S&OP
+          return n;
+        };
+
+        // Identificar Último Mês SIACESP
+        const mesesSiacesp = [...new Set(rawSiacesp.map(d => getMesAno(d.data_operacao || d.Data)))].sort();
+        const ultimoMesSiacesp = mesesSiacesp[mesesSiacesp.length - 1];
+        const anoAtual = parseInt(ultimoMesSiacesp.split('-')[0]);
+        const anoAnterior = anoAtual - 1;
+
+        const mes1 = addMonths(ultimoMesSiacesp, 1);
+        const mes2 = addMonths(ultimoMesSiacesp, 2);
+        const mes3 = addMonths(ultimoMesSiacesp, 3);
+        const mesesAlvo = [mes1, mes2, mes3];
+
+        document.getElementById('sop-subtitle').textContent = `Base Fechada SIACESP: ${ultimoMesSiacesp} | Projeção Line Up: ${getMonthName(mes1)} a ${getMonthName(mes3)}`;
+
+        // Identificar Semanas do Lineup
+        const datasPosicao = [...new Set(rawLineup.map(d => (d.data_posicao || d.Data || '').split(' ')[0]))].filter(d => d).sort();
+        const semanaAtual = datasPosicao[datasPosicao.length - 1];
+        const semanaPassada = datasPosicao.length > 1 ? datasPosicao[datasPosicao.length - 2] : semanaAtual;
+
+        // Processar Lineup
+        const lineupAtual = { total: [0,0,0], produtos: {} };
+        const lineupPassado = { total: [0,0,0], produtos: {} };
+
+        const processarLineup = (dados, alvoObjeto, dataFiltro) => {
+          dados.forEach(row => {
+            const dtPos = (row.data_posicao || row.Data || '').split(' ')[0];
+            if (dtPos === dataFiltro) {
+              const mesEta = getMesAno(row.eta || row.ETA);
+              const indexMes = mesesAlvo.indexOf(mesEta);
+              if (indexMes > -1) {
+                const prod = padronizarProduto(row.produto || row.Produto);
+                const vol = parseFloat(row.volume || row.Volume || row.VOLUME) || 0;
+                alvoObjeto.total[indexMes] += vol;
+                if(!alvoObjeto.produtos[prod]) alvoObjeto.produtos[prod] = [0,0,0];
+                alvoObjeto.produtos[prod][indexMes] += vol;
+              }
+            }
+          });
+        };
+
+        processarLineup(rawLineup, lineupAtual, semanaAtual);
+        processarLineup(rawLineup, lineupPassado, semanaPassada);
+
+        // Processar SIACESP (YTD)
+        const calcSiacespYTD = (dados, ano, mesLimite) => {
+          const limiteAnoMes = `${ano}-${mesLimite.split('-')[1]}`;
+          let total = 0;
+          let prodTotais = {};
+          
+          dados.forEach(row => {
+            const mesRow = getMesAno(row.data_operacao || row.Data);
+            if (mesRow >= `${ano}-01` && mesRow <= limiteAnoMes) {
+              const vol = parseFloat(row.volume || row.Volume || row.VOLUME) || 0;
+              const prod = padronizarProduto(row.produto || row.Produto);
+              total += vol;
+              if(!prodTotais[prod]) prodTotais[prod] = 0;
+              prodTotais[prod] += vol;
+            }
+          });
+          return { total, prodTotais };
+        };
+
+        const ytdAtualBase = calcSiacespYTD(rawSiacesp, anoAtual, ultimoMesSiacesp);
+        const ytdAntMes1 = calcSiacespYTD(rawSiacesp, anoAnterior, mes1);
+        const ytdAntMes2 = calcSiacespYTD(rawSiacesp, anoAnterior, mes2);
+        const ytdAntMes3 = calcSiacespYTD(rawSiacesp, anoAnterior, mes3);
+
+        // Renderizar KPIs
+        const renderDiff = (atual, passado) => {
+          const diff = atual - passado;
+          if (diff === 0) return `<span class="sop-diff-neutral">0 (0%)</span>`;
+          const percent = passado === 0 ? 100 : (diff / passado) * 100;
+          const cls = diff > 0 ? 'sop-diff-positive' : 'sop-diff-negative';
+          const prefix = diff > 0 ? '+' : '';
+          return `<span class="${cls}">${prefix}${formatNumber(diff)} (${prefix}${percent.toFixed(1)}%)</span>`;
+        };
+
+        const kpiContainer = document.getElementById('sop-kpi-container');
+        let kpiHtml = '';
+        let total3MesesAtual = 0;
+        let total3MesesPassado = 0;
+
+        mesesAlvo.forEach((mes, idx) => {
+          total3MesesAtual += lineupAtual.total[idx];
+          total3MesesPassado += lineupPassado.total[idx];
+          kpiHtml += `
+            <div class="kpi-card" style="background: var(--sop-header-bg);">
+              <div class="kpi-label">Lineup ${getMonthName(mes)}</div>
+              <div class="kpi-value">${formatNumber(lineupAtual.total[idx])} t</div>
+              <div class="kpi-label" style="margin-top:16px; margin-bottom:0; text-transform:none;">Vs Sem. Anterior: ${renderDiff(lineupAtual.total[idx], lineupPassado.total[idx])}</div>
+            </div>
+          `;
+        });
+
+        kpiHtml += `
+          <div class="kpi-card" style="border: 2px solid var(--black);">
+            <div class="kpi-label" style="color: var(--black);">Total Lineup S&OP (3 Meses)</div>
+            <div class="kpi-value">${formatNumber(total3MesesAtual)} t</div>
+            <div class="kpi-label" style="margin-top:16px; margin-bottom:0; text-transform:none;">Vs Sem. Anterior: ${renderDiff(total3MesesAtual, total3MesesPassado)}</div>
+          </div>
+        `;
+        kpiContainer.innerHTML = kpiHtml;
+
+        // Renderizar Cabeçalhos Tabela
+        document.getElementById('sop-thead-row1').innerHTML = `
+          <th rowspan="2">PRODUTO</th>
+          <th colspan="2">JUNHO</th>
+          <th colspan="2">JULHO</th>
+          <th colspan="2">AGOSTO</th>
+          <th colspan="3" class="border-thick">ACUM. (JAN-${getMonthName(mes1)})</th>
+          <th colspan="3" class="border-thick">ACUM. (JAN-${getMonthName(mes2)})</th>
+          <th colspan="3" class="border-thick">ACUM. (JAN-${getMonthName(mes3)})</th>
+        `.replace('JUNHO', getMonthName(mes1)).replace('JULHO', getMonthName(mes2)).replace('AGOSTO', getMonthName(mes3));
+
+        document.getElementById('sop-thead-row2').innerHTML = `
+          <th>Vol</th><th>Dif. 2025</th> <th>Vol</th><th>Dif. 2025</th> <th>Vol</th><th>Dif. 2025</th>
+          <th class="border-thick">Proj ${anoAtual}</th><th>${anoAnterior}</th><th>Var %</th>
+          <th class="border-thick">Proj ${anoAtual}</th><th>${anoAnterior}</th><th>Var %</th>
+          <th class="border-thick">Proj ${anoAtual}</th><th>${anoAnterior}</th><th>Var %</th>
+        `.replace(/Dif. 2025/g, `Dif. ${anoAnterior}`);
+
+        // Renderizar Linhas
+        const produtosObrigatorios = ['MOP', 'SAM', 'UREIA', 'MAP', 'NP', 'SSP', 'TSP'];
+        let tbodyHtml = '';
+
+        const renderVarPerc = (atual, anterior) => {
+          if(!anterior || anterior === 0) return '-';
+          const percent = ((atual / anterior) - 1) * 100;
+          const cls = percent > 0 ? 'sop-diff-positive' : (percent < 0 ? 'sop-diff-negative' : 'sop-diff-neutral');
+          return `<span class="${cls}">${percent > 0 ? '+' : ''}${percent.toFixed(1)}%</span>`;
+        };
+
+        const gerarLinha = (nome, isTotal = false) => {
+          const lAt = (isTotal ? lineupAtual.total : lineupAtual.produtos[nome]) || [0,0,0];
+          const lPa = (isTotal ? lineupPassado.total : lineupPassado.produtos[nome]) || [0,0,0];
+          const sBase = isTotal ? ytdAtualBase.total : (ytdAtualBase.prodTotais[nome] || 0);
+          const a1 = isTotal ? ytdAntMes1.total : (ytdAntMes1.prodTotais[nome] || 0);
+          const a2 = isTotal ? ytdAntMes2.total : (ytdAntMes2.prodTotais[nome] || 0);
+          const a3 = isTotal ? ytdAntMes3.total : (ytdAntMes3.prodTotais[nome] || 0);
+
+          const cen1Proj = sBase + lAt[0];
+          const cen2Proj = cen1Proj + lAt[1];
+          const cen3Proj = cen2Proj + lAt[2];
+
+          const trClass = isTotal ? 'class="sop-total-row"' : '';
+          const nomeExibicao = nome === 'NP' ? 'NP+MES' : nome;
+
+          return `
+            <tr ${trClass}>
+              <td>${nomeExibicao}</td>
+              <td>${formatNumber(lAt[0])}</td> <td>${renderDiff(lAt[0], lPa[0])}</td>
+              <td>${formatNumber(lAt[1])}</td> <td>${renderDiff(lAt[1], lPa[1])}</td>
+              <td>${formatNumber(lAt[2])}</td> <td>${renderDiff(lAt[2], lPa[2])}</td>
+              
+              <td class="border-thick">${formatNumber(cen1Proj)}</td> <td>${formatNumber(a1)}</td> <td>${renderVarPerc(cen1Proj, a1)}</td>
+              <td class="border-thick">${formatNumber(cen2Proj)}</td> <td>${formatNumber(a2)}</td> <td>${renderVarPerc(cen2Proj, a2)}</td>
+              <td class="border-thick">${formatNumber(cen3Proj)}</td> <td>${formatNumber(a3)}</td> <td>${renderVarPerc(cen3Proj, a3)}</td>
+            </tr>
+          `;
+        };
+
+        produtosObrigatorios.forEach(prod => { tbodyHtml += gerarLinha(prod, false); });
+        tbodyHtml += gerarLinha('TODOS ACIMA', true);
+        document.getElementById('sop-tbody').innerHTML = tbodyHtml;
       }
 
-      // KPI 2: Volume Total Siacesp (Somado dinamicamente da aba agregada)
+      // ==========================================
+      // LÓGICA DAS ABAS COMPARATIVAS ANTIGAS
+      // ==========================================
+      
       let volTotal = 0;
       if (dashboardData.siacesp_base && dashboardData.siacesp_base.length > 0) {
         volTotal = dashboardData.siacesp_base.reduce((acc, row) => acc + (row["Volume_SIACESP"] || 0), 0);
       }
       document.getElementById('kpi-vol-total').textContent = formatCompact(volTotal);
 
-      // KPI 3: Fontes Analisadas
-      const fontes = new Set(dashboardData.resumo.map(r => r["Fonte Line Up"]).filter(Boolean));
+      const fontes = new Set((dashboardData.resumo || []).map(r => r["Fonte Line Up"]).filter(Boolean));
       document.getElementById('kpi-fontes-count').textContent = fontes.size;
-      document.getElementById('kpi-fontes-names').textContent = Array.from(fontes).join(', ') || 'Nenhuma fonte encontrada';
+      document.getElementById('kpi-fontes-names').textContent = Array.from(fontes).join(', ') || '-';
 
-      // --- POPULAR TABELAS ---
       const populateTable = (tableId, data, includeSource = false) => {
         const tbody = document.querySelector(`#${tableId} tbody`);
-        if (!data || data.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5">Nenhum dado encontrado</td></tr>';
-          return;
-        }
+        const tfoot = document.querySelector(`#${tableId} tfoot`);
+        if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sem dados</td></tr>'; return; }
 
+        let totalLineUp = 0; let totalSiacesp = 0; let totalDisc = 0;
         data.forEach(row => {
-          if (!row["Y_PRODUTO PARA"]) return; // Pula linhas vazias
-
-          const tr = document.createElement('tr');
+          if (!row["Y_PRODUTO PARA"]) return;
+          const vLineUp = row["Volume_LineUp"] || 0;
+          const vSiacesp = row["Volume_SIACESP"] || 0;
           const disc = row["Discrepancia"] || 0;
+
+          totalLineUp += vLineUp; totalSiacesp += vSiacesp; totalDisc += disc;
+          const pDisc = calcPercent(disc, vSiacesp);
           const discClass = disc < 0 ? 'discrepancy-negative' : 'discrepancy-positive';
           
           let html = '';
-          if (includeSource) {
-            html += `<td><strong>${row["Fonte Line Up"] || '-'}</strong></td>`;
-          }
-          
+          if (includeSource) html += `<td><strong>${row["Fonte Line Up"] || '-'}</strong></td>`;
           html += `
             <td>${row["Y_PRODUTO PARA"]}</td>
-            <td class="right mono">${formatNumber(row["Volume_LineUp"] || 0)}</td>
-            <td class="right mono">${formatNumber(row["Volume_SIACESP"] || 0)}</td>
-            <td class="right mono ${discClass}">
-              <span class="discrepancy-badge">${formatNumber(disc)}</span>
-            </td>
+            <td class="right mono">${formatNumber(vLineUp)}</td>
+            <td class="right mono">${formatNumber(vSiacesp)}</td>
+            <td class="right mono ${discClass}"><span class="discrepancy-badge">${formatNumber(disc)}</span></td>
+            <td class="right">${renderPercentHtml(pDisc)}</td>
           `;
-          
+          const tr = document.createElement('tr');
           tr.innerHTML = html;
           tbody.appendChild(tr);
         });
+
+        const totalPercent = calcPercent(totalDisc, totalSiacesp);
+        const colSpan = includeSource ? 2 : 1;
+        tfoot.innerHTML = `
+          <tr>
+            <td colspan="${colSpan}" style="text-align: right; text-transform: uppercase; font-size: 11px;">Volume Total</td>
+            <td class="right mono">${formatNumber(totalLineUp)}</td>
+            <td class="right mono">${formatNumber(totalSiacesp)}</td>
+            <td class="right mono"><span class="discrepancy-badge" style="background:var(--black);color:white;">${formatNumber(totalDisc)}</span></td>
+            <td class="right">${renderPercentHtml(totalPercent)}</td>
+          </tr>
+        `;
       };
 
-      populateTable('table-resumo', dashboardData.resumo, true);
-      populateTable('table-futuro', dashboardData.futuro);
-      populateTable('table-transatlantica', dashboardData.transatlantica);
-      populateTable('table-wilson', dashboardData.wilson);
-      populateTable('table-orion', dashboardData.orion);
+      if(dashboardData.resumo) populateTable('table-resumo', dashboardData.resumo, true);
+      if(dashboardData.futuro) populateTable('table-futuro', dashboardData.futuro);
+      if(dashboardData.transatlantica) populateTable('table-transatlantica', dashboardData.transatlantica);
+      if(dashboardData.wilson) populateTable('table-wilson', dashboardData.wilson);
+      if(dashboardData.orion) populateTable('table-orion', dashboardData.orion);
 
-      // --- RENDERIZAR GRÁFICO DINÂMICO ---
-      const validData = dashboardData.resumo.filter(d => d["Y_PRODUTO PARA"]);
-      const chartData = [...validData].sort((a, b) => Math.abs(b["Discrepancia"] || 0) - Math.abs(a["Discrepancia"] || 0)).slice(0, 8);
+      // Gráficos e Ranking
+      if(dashboardData.resumo) {
+        const validData = dashboardData.resumo.filter(d => d["Y_PRODUTO PARA"]);
+        const chartData1 = [...validData].sort((a, b) => Math.abs(b["Discrepancia"] || 0) - Math.abs(a["Discrepancia"] || 0)).slice(0, 8);
+        if(chartData1.length > 0) {
+          new Chart(document.getElementById('discChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: chartData1.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`),
+              datasets: [{ data: chartData1.map(d => d["Discrepancia"] || 0), backgroundColor: '#111111' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
+          });
+        }
+      }
 
-      if(chartData.length > 0) {
-        const ctx = document.getElementById('discChart').getContext('2d');
-        new Chart(ctx, {
+      const agentStats = [
+        { name: 'Futuro', data: dashboardData.futuro },
+        { name: 'Transatlântica', data: dashboardData.transatlantica },
+        { name: 'Wilson Sons', data: dashboardData.wilson },
+        { name: 'Orion', data: dashboardData.orion }
+      ];
+
+      const rankingData = [];
+      agentStats.forEach(agent => {
+        let sLineUp = 0; let sSiacesp = 0;
+        if(agent.data) {
+          agent.data.forEach(r => {
+            if(r["Y_PRODUTO PARA"]) { sLineUp += (r["Volume_LineUp"] || 0); sSiacesp += (r["Volume_SIACESP"] || 0); }
+          });
+        }
+        const sDisc = sLineUp - sSiacesp;
+        const percent = calcPercent(sDisc, sSiacesp) || 0;
+        if(sSiacesp > 0) rankingData.push({ name: agent.name, percent: percent, absPercent: Math.abs(percent) });
+      });
+
+      rankingData.sort((a, b) => a.absPercent - b.absPercent);
+      if (rankingData.length > 0) {
+        const bestAgent = rankingData[0];
+        document.getElementById('kpi-best-agent').textContent = bestAgent.name;
+        document.getElementById('kpi-best-agent-label').textContent = `Divergência: ${Math.abs(bestAgent.percent).toFixed(2)}%`;
+        
+        new Chart(document.getElementById('rankingChart').getContext('2d'), {
           type: 'bar',
           data: {
-            labels: chartData.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`),
-            datasets: [{
-              label: 'Discrepância (MT)',
-              data: chartData.map(d => d["Discrepancia"] || 0),
-              backgroundColor: '#111111',
-              borderWidth: 0
-            }]
+            labels: rankingData.map(d => d.name),
+            datasets: [{ data: rankingData.map(d => d.percent), backgroundColor: rankingData.map((d, i) => i === 0 ? '#111111' : '#888888') }]
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                backgroundColor: '#000000',
-                titleFont: { family: "'Inter', sans-serif", size: 13 },
-                bodyFont: { family: "'JetBrains Mono', monospace", size: 12 },
-                padding: 12,
-                cornerRadius: 0
-              }
-            },
-            scales: {
-              y: { 
-                grid: { color: '#e0e0e0', drawBorder: false },
-                ticks: { font: { family: "'JetBrains Mono', monospace", size: 11 }, color: '#666666' }
-              },
-              x: { 
-                grid: { display: false, drawBorder: false },
-                ticks: { 
-                  font: { family: "'Inter', sans-serif", size: 11, weight: '500' },
-                  color: '#111111',
-                  maxRotation: 30,
-                  minRotation: 30
-                }
-              }
-            }
-          }
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
       }
 
-      // --- NAVEGAÇÃO DAS ABAS ---
+      // Sistema de Abas
       document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          document.querySelectorAll('.tab, .tab-content').forEach(e => e.classList.remove('active'));
           tab.classList.add('active');
           document.getElementById(tab.dataset.target).classList.add('active');
         });
       });
+
+      // Disparar Render S&OP
+      renderizarSOP();
     });
   </script>
 </body>

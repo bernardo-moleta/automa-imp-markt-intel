@@ -60,7 +60,7 @@ class ComparadorEscalacao:
             0
         )
         lineup_agg = df_mes.groupby("Y_PRODUTO PARA", as_index=False)[col_volume].sum()
-        lineup_agg.rename(columns={col_volume: "Volume_LineUp"}, inplace=True)
+        lineup_agg.rename(columns={col_volume: f"Volume_LineUp"}, inplace=True)
 
         # Realiza um outer merge para garantir que produtos exclusivos de uma base também apareçam
         comparacao = pd.merge(
@@ -69,7 +69,7 @@ class ComparadorEscalacao:
 
         # Calcula a discrepância
         comparacao["Discrepancia"] = (
-            comparacao["Volume_LineUp"] - comparacao["Volume_SIACESP"]
+            comparacao[f"Volume_LineUp"] - comparacao["Volume_SIACESP"]
         )
 
         # Organiza as maiores discrepâncias no topo e adiciona a identificação da origem
@@ -152,39 +152,39 @@ def aplicar_estilo_planilha(ws, titulo):
     )
 
 
-def exportar_dados_para_html(excel_path="Analise_Comparativa_Escalacao.xlsx"):
+def exportar_dados_para_html(excel_path="Analise_Comparativa_Escalacao.xlsx", df_siacesp_bruto=None, df_lineup_bruto=None):
     """
-    Lê a saída do Excel e gera um arquivo JavaScript para alimentar o HTML dinamicamente.
+    Lê a saída do Excel e gera um arquivo JavaScript. 
+    Se você tiver os DataFrames originais do SIACESP e do Lineup no código, 
+    passe-os como df_siacesp_bruto e df_lineup_bruto.
     """
     print("\nExportando dados dinâmicos para o Dashboard HTML...")
     try:
         xls = pd.ExcelFile(excel_path)
-
+        
         def ler_aba(nome_aba):
             if nome_aba in xls.sheet_names:
-                # skiprows=2 para pular as linhas de título geradas pelo openpyxl
                 df = pd.read_excel(xls, sheet_name=nome_aba, skiprows=2)
-                # Preenche valores vazios com 0 para evitar erros no JSON
                 df = df.fillna(0)
                 return df.to_dict(orient="records")
             return []
-
+            
         datasets = {
-            "resumo": ler_aba("Resumo Consolidado"),
+            "resumo": ler_aba("Resumo Consolidado"), 
             "futuro": ler_aba("Comp_FUTURO"),
             "transatlantica": ler_aba("Comp_TRANSATLANTICA"),
             "wilson": ler_aba("Comp_WILSON_SONS"),
             "orion": ler_aba("Comp_ORION"),
             "siacesp_base": ler_aba("Base_SIACESP_Agregada"),
+            # Dados brutos necessários para a nova aba S&OP
+            "siacesp_raw": df_siacesp_bruto.fillna(0).to_dict(orient="records") if df_siacesp_bruto is not None else [],
+            "lineup_raw": df_lineup_bruto.fillna(0).to_dict(orient="records") if df_lineup_bruto is not None else []
         }
-
-        # Cria o arquivo na mesma pasta que o script e o HTML
+        
         with open("dados_dashboard.js", "w", encoding="utf-8") as f:
             f.write("const dashboardData = " + json.dumps(datasets) + ";")
-
-        print(
-            "✅ Arquivo 'dados_dashboard.js' atualizado! Basta atualizar a página HTML."
-        )
+        
+        print("✅ Arquivo 'dados_dashboard.js' atualizado com suporte S&OP!")
     except Exception as e:
         print(f"Erro ao exportar dados para HTML: {e}")
 
@@ -196,7 +196,7 @@ def main():
 
     # 2. Processar cada base com suas colunas de volume específicas
     comp_futuro = comparador.processar_lineup(
-        nome="FUTURO_posicao semanal",
+        nome="UNIMAR",
         caminho="BI_Line Up.xlsx",
         col_data_pos="DATA_POSIÇÃO",
         col_etb="ETB",
@@ -220,7 +220,7 @@ def main():
     )
 
     comp_orion = comparador.processar_lineup(
-        nome="Sheet1",
+        nome="ORION",
         caminho="BI_Line Up_ORION.xlsx",
         col_data_pos="DATA POSIÇÃO",
         col_etb="Z_ETB",
@@ -248,10 +248,10 @@ def main():
     )
 
     # Aba 2: Futuro
-    ws_futuro = wb.create_sheet(title="Comp_FUTURO")
+    ws_futuro = wb.create_sheet(title="Comp_UNIMAR")
     for r in dataframe_to_rows(comp_futuro, index=False, header=True):
         ws_futuro.append(r)
-    aplicar_estilo_planilha(ws_futuro, "Comparação: Line Up FUTURO vs SIACESP")
+    aplicar_estilo_planilha(ws_futuro, "Comparação: Line Up UNIMAR vs SIACESP")
 
     # Aba 3: Transatlântica
     ws_trans = wb.create_sheet(title="Comp_TRANSATLANTICA")
@@ -288,9 +288,11 @@ def main():
 
     # ADICIONE A CHAMADA DA FUNÇÃO AQUI:
     # Certifique-se de que o nome do arquivo bate com o que você acabou de salvar
-    exportar_dados_para_html("Analise_Comparativa_Escalacao.xlsx")
+    exportar_dados_para_html("Analise_Comparativa_Escalacao.xlsx")  # Passe o DataFrame bruto do Lineup se necessário
 
 
 # Executa o pipeline
 if __name__ == "__main__":
     main()
+
+#Agora preciso de uma nova aba no dashboard com os dados de uma nova lógica, será uma aba com calculos que são passados em uma reunião semanal de S&OP, onde a estrutura básica de o qu deve ser repassado é o seguinte: 1. Visão geral da semana -> o total em lineup dessa semana comparado com a semana passada, todos os dados com etb para o mes mais atual do siacesp+1, +2 e +3 (ou seja se o mes mais atual do siacesp for maio, a análise será junho, julho e agosto). 2. Cumulado geral vs ano passado, Acumulado é a soma de tudo que tem para o ano atual no siacesp + o lineup devemos fazer isso para os 3 meses (siacesp+junho, siacesp+junho+julho, siacesp+junho+julho+agosto) e comparar com o mesmo período do ano passado. 3. Fazer a mesma lógica do acumulado, mas agora para os seguintes produtos: MOP, SAM, UREIA, MAP, NP(tem lineups que tem MES, MES09, MES15 ETC - DEVE SER ADICIONADO AQUI (O SIACESP NÃO TEM MES, MAS A COMPARAÇÃO DEVE SER NP(SIACESP COM NP +TODOS OS MES)), SSP E TSP. Para um guia visual em anexo tem uma tabela de como isso fica estruturado.
