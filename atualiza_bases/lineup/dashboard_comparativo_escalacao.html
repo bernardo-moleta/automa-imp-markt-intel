@@ -1100,14 +1100,14 @@
         const tfoot = document.querySelector(`#${tableId} tfoot`);
         if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sem dados</td></tr>'; return; }
 
-        let totalLineUp = 0; let totalSiacesp = 0; let totalDisc = 0;
+        let totalLineUp = 0; let totalSiacesp = 0; let totalDisc = 0; let somaErrosAbsolutos = 0;
         data.forEach(row => {
           if (!row["Y_PRODUTO PARA"]) return;
           const vLineUp = row["Volume_LineUp"] || 0;
           const vSiacesp = row["Volume_SIACESP"] || 0;
           const disc = row["Discrepancia"] || 0;
 
-          totalLineUp += vLineUp; totalSiacesp += vSiacesp; totalDisc += disc;
+          totalLineUp += vLineUp; totalSiacesp += vSiacesp; totalDisc += disc; somaErrosAbsolutos += Math.abs(disc);
           const pDisc = calcPercent(disc, vSiacesp);
           const discClass = disc < 0 ? 'discrepancy-negative' : 'discrepancy-positive';
 
@@ -1125,11 +1125,11 @@
           tbody.appendChild(tr);
         });
 
-        const totalPercent = calcPercent(totalDisc, totalSiacesp);
+        const totalPercent = calcPercent(somaErrosAbsolutos, totalSiacesp);
         const colSpan = includeSource ? 2 : 1;
         tfoot.innerHTML = `
           <tr>
-            <td colspan="${colSpan}" style="text-align: right; text-transform: uppercase; font-size: 11px;">Volume Total</td>
+            <td colspan="${colSpan}" style="text-align: left; text-transform: uppercase; font-size: 11px;">WAPE (Weighted Average Percentage Error)</td>
             <td class="right mono">${formatNumber(totalLineUp)}</td>
             <td class="right mono">${formatNumber(totalSiacesp)}</td>
             <td class="right mono"><span class="discrepancy-badge" style="background:var(--accent);border-color:var(--accent);color:#0d1117;">${formatNumber(totalDisc)}</span></td>
@@ -1157,23 +1157,56 @@
 
       const agentStats = [{ name: 'Unimar', data: dashboardData.unimar }, { name: 'Transatlântica', data: dashboardData.transatlantica }, { name: 'Wilson Sons', data: dashboardData.wilson }, { name: 'Orion', data: dashboardData.orion }];
       const rankingData = [];
+
       agentStats.forEach(agent => {
-        let sLineUp = 0; let sSiacesp = 0;
-        if (agent.data) { agent.data.forEach(r => { if (r["Y_PRODUTO PARA"]) { sLineUp += (r["Volume_LineUp"] || 0); sSiacesp += (r["Volume_SIACESP"] || 0); } }); }
-        const sDisc = sLineUp - sSiacesp;
-        const percent = calcPercent(sDisc, sSiacesp) || 0;
-        if (sSiacesp > 0) rankingData.push({ name: agent.name, percent: percent, absPercent: Math.abs(percent) });
+        let sLineUp = 0;
+        let sSiacesp = 0;
+        let sAbsDisc = 0; // NOVA VARIÁVEL: Acumulador de erro absoluto (WAPE)
+
+        if (agent.data) {
+          agent.data.forEach(r => {
+            if (r["Y_PRODUTO PARA"]) {
+              sLineUp += (r["Volume_LineUp"] || 0);
+              sSiacesp += (r["Volume_SIACESP"] || 0);
+
+              // Acumula o erro daquele produto ignorando o sinal (módulo)
+              sAbsDisc += Math.abs(r["Discrepancia"] || 0);
+            }
+          });
+        }
+
+        // Agora a porcentagem do agente é a proporção do Erro Absoluto sobre o Real
+        const percent = calcPercent(sAbsDisc, sSiacesp) || 0;
+
+        // Como o WAPE (percent) agora é sempre positivo, absPercent será igual a ele, 
+        // mas mantemos a estrutura para não quebrar o seu código de ordenação (sort)
+        if (sSiacesp > 0) rankingData.push({ name: agent.name, percent: percent, absPercent: percent });
       });
 
       rankingData.sort((a, b) => a.absPercent - b.absPercent);
       if (rankingData.length > 0) {
         const bestAgent = rankingData[0];
         document.getElementById('kpi-best-agent').textContent = bestAgent.name;
-        document.getElementById('kpi-best-agent-label').textContent = `Divergência: ${Math.abs(bestAgent.percent).toFixed(2)}%`;
+        document.getElementById('kpi-best-agent-label').textContent = `Divergência: ${bestAgent.percent.toFixed(2)}%`;
+
         new Chart(document.getElementById('rankingChart').getContext('2d'), {
           type: 'bar',
-          data: { labels: rankingData.map(d => d.name), datasets: [{ data: rankingData.map(d => d.percent), backgroundColor: rankingData.map((d, i) => i === 0 ? '#3fb950' : '#8b949e') }] },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } }, y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } } } }
+          data: {
+            labels: rankingData.map(d => d.name),
+            datasets: [{
+              data: rankingData.map(d => d.percent),
+              backgroundColor: rankingData.map((d, i) => i === 0 ? '#3fb950' : '#8b949e')
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
+              y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } }
+            }
+          }
         });
       }
 
@@ -1269,26 +1302,26 @@
 
       function resetSearchFilters() {
         document.querySelectorAll('.dropdown-check-list input[type="checkbox"]').forEach(checkbox => {
-        checkbox.checked = false;
-    });
+          checkbox.checked = false;
+        });
 
-    // 2. Restaura o texto original de cada botão
-    const dropdownsCustomizados = [
-        { id: 'search-product', text: 'Todos os Produtos' },
-        { id: 'search-port', text: 'Todos os Portos' },
-        { id: 'search-agent', text: 'Todos os Agentes' }
-    ];
+        // 2. Restaura o texto original de cada botão
+        const dropdownsCustomizados = [
+          { id: 'search-product', text: 'Todos os Produtos' },
+          { id: 'search-port', text: 'Todos os Portos' },
+          { id: 'search-agent', text: 'Todos os Agentes' }
+        ];
 
-    dropdownsCustomizados.forEach(dropdown => {
-        const selectElement = document.getElementById(dropdown.id);
-        // Busca o elemento customizado que foi criado logo após o select original
-        if (selectElement && selectElement.nextElementSibling) {
+        dropdownsCustomizados.forEach(dropdown => {
+          const selectElement = document.getElementById(dropdown.id);
+          // Busca o elemento customizado que foi criado logo após o select original
+          if (selectElement && selectElement.nextElementSibling) {
             const anchorText = selectElement.nextElementSibling.querySelector('.anchor span');
             if (anchorText) {
-                anchorText.textContent = dropdown.text;
+              anchorText.textContent = dropdown.text;
             }
-        }
-    });
+          }
+        });
 
         document.getElementById('search-date-start').value = '';
         document.getElementById('search-date-end').value = '';

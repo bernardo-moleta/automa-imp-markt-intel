@@ -56,7 +56,9 @@ class ComparadorEscalacao:
         df_mes = df_filtrado[df_filtrado[col_etb].dt.month == self.mes_etb_alvo]
 
         # Converte a coluna de volume customizada e agrega os dados
-        df_mes[col_volume] = pd.to_numeric(df_mes[col_volume], errors="coerce").fillna(0)
+        df_mes[col_volume] = pd.to_numeric(df_mes[col_volume], errors="coerce").fillna(
+            0
+        )
         lineup_agg = df_mes.groupby("Y_PRODUTO PARA", as_index=False)[col_volume].sum()
         lineup_agg.rename(columns={col_volume: "Volume_LineUp"}, inplace=True)
 
@@ -75,7 +77,9 @@ class ComparadorEscalacao:
             if row["Volume_SIACESP"] > 0:
                 return row["Discrepancia"] / row["Volume_SIACESP"]
             elif row["Volume_LineUp"] > 0:
-                return 1.0 # 100% de erro se não havia no SIACESP mas apareceu no Line Up
+                return (
+                    1.0  # 100% de erro se não havia no SIACESP mas apareceu no Line Up
+                )
             return 0.0
 
         comparacao["% DISC."] = comparacao.apply(calc_perc, axis=1)
@@ -92,19 +96,25 @@ class ComparadorEscalacao:
         total_lineup = comparacao["Volume_LineUp"].sum()
         total_siacesp = comparacao["Volume_SIACESP"].sum()
         diferenca_liquida = total_lineup - total_siacesp
-        
+
         # O pulo do gato: Somar os erros absolutos para que não se anulem
         soma_erros_absolutos = comparacao["Discrepancia"].abs().sum()
-        wape_percentual = (soma_erros_absolutos / total_siacesp) if total_siacesp > 0 else 0
+        wape_percentual = (
+            (soma_erros_absolutos / total_siacesp) if total_siacesp > 0 else 0
+        )
 
-        linha_total = pd.DataFrame([{
-            "Fonte Line Up": nome,
-            "Y_PRODUTO PARA": "TOTAL",
-            "Volume_LineUp": total_lineup,
-            "Volume_SIACESP": total_siacesp,
-            "Discrepancia": diferenca_liquida,
-            "% DISC.": wape_percentual
-        }])
+        linha_total = pd.DataFrame(
+            [
+                {
+                    "Fonte Line Up": nome,
+                    "Y_PRODUTO PARA": "TOTAL",
+                    "Volume_LineUp": total_lineup,
+                    "Volume_SIACESP": total_siacesp,
+                    "Discrepancia": diferenca_liquida,
+                    "% DISC.": wape_percentual,
+                }
+            ]
+        )
 
         # Anexa a linha de total formatada ao fim do DataFrame
         comparacao = pd.concat([comparacao, linha_total], ignore_index=True)
@@ -150,7 +160,7 @@ def aplicar_estilo_planilha(ws, titulo):
     ):
         max_length = 0
         is_perc_col = False
-        
+
         if col[0].value == "% DISC.":
             is_perc_col = True
 
@@ -206,6 +216,9 @@ def exportar_dados_para_html(
         def ler_aba(nome_aba):
             if nome_aba in xls.sheet_names:
                 df = pd.read_excel(xls, sheet_name=nome_aba, skiprows=2)
+                if "Y_PRODUTO PARA" in df.columns:
+                    df = df[df["Y_PRODUTO PARA"] != "TOTAL"]
+
                 return df.fillna(0).to_dict(orient="records")
             return []
 
@@ -304,7 +317,7 @@ def main():
 
     # 3. Concatenar as bases e extrair as Top 20 maiores divergências num contexto consolidado
     resumo = pd.concat([comp_unimar, comp_trans, comp_wilson, comp_orion])
-    
+
     # IMPORTANTE: A linha de "TOTAL" agora é excluída do 'resumo' para não entrar no ranking das Top 20
     resumo = (
         resumo[(resumo["Discrepancia"] != 0) & (resumo["Y_PRODUTO PARA"] != "TOTAL")]
@@ -378,6 +391,7 @@ def main():
             3: ["ORION"],
         },
     )
+
 
 # Executa o pipeline
 if __name__ == "__main__":
