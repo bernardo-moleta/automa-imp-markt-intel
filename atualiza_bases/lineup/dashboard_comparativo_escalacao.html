@@ -746,255 +746,256 @@
 
     </div>
   </main>
-  <footer style="background: var(--surface); border-top: 1px solid var(--border); padding: 16px 32px; text-align: center; font-size: 12px; color: var(--muted);">
+  <footer
+    style="background: var(--surface); border-top: 1px solid var(--border); padding: 16px 32px; text-align: center; font-size: 12px; color: var(--muted);">
     <div>© 2026 BrFértil S.A - Inteligência de Mercado & Análise de Dados.</div>
-    <div style="margin-top: 4px;">Desenvolvido por <a href=" https://br.linkedin.com/in/bernardo-moleta-17598a3a0" target="_blank"
-        style="color: var(--accent); text-decoration: none;">Bernardo Julio de Almeida Moleta</a></div>
+    <div style="margin-top: 4px;">Desenvolvido por <a href=" https://br.linkedin.com/in/bernardo-moleta-17598a3a0"
+        target="_blank" style="color: var(--accent); text-decoration: none;">Bernardo Julio de Almeida Moleta</a></div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('gen-date').textContent = `LIDO EM: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`;
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('gen-date').textContent = `LIDO EM: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`;
 
-      if (typeof Chart !== 'undefined') {
-        Chart.defaults.color = '#8b949e';
-        Chart.defaults.borderColor = '#21262d';
-        Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
-      }
+        if (typeof Chart !== 'undefined') {
+          Chart.defaults.color = '#8b949e';
+          Chart.defaults.borderColor = '#21262d';
+          Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+        }
 
-      if (typeof dashboardData === 'undefined') {
-        document.getElementById('main-content').innerHTML = `<div style="background: var(--surface); border: 1px solid var(--danger); border-radius: var(--radius); padding: 40px; text-align: center;"><h2 style="font-size: 24px; margin-bottom: 16px; color: var(--danger);">⚠️ Base de Dados Não Encontrada</h2><p style="color: var(--muted); font-family: var(--font-mono);">O arquivo <b>dados_dashboard.js</b> não foi carregado pelo HTML.</p></div>`;
-        return;
-      }
-
-      const formatNumber = (num) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
-      const formatCompact = (num) => new Intl.NumberFormat('pt-BR', { notation: "compact", maximumFractionDigits: 2 }).format(num);
-      const calcPercent = (disc, base) => { if (!base || base === 0) return null; return (disc / base) * 100; };
-      const renderPercentHtml = (percent) => {
-        if (percent === null) return `<span class="percent-neutral">Sem Ref.</span>`;
-        const prefix = percent > 0 ? '+' : '';
-        const colorClass = Math.abs(percent) > 5 ? (percent < 0 ? 'percent-red' : 'percent-green') : 'percent-neutral';
-        return `<span class="percent-badge ${colorClass}">${prefix}${percent.toFixed(2)}%</span>`;
-      };
-
-      // ==========================================
-      // LÓGICA DA ABA S&OP SEMANAL (SCALABLE)
-      // ==========================================
-      function renderizarSOP() {
-        const rawSiacesp = dashboardData.siacesp_raw || [];
-        const rawLineup = dashboardData.lineup_raw || [];
-
-        if (rawSiacesp.length === 0 || rawLineup.length === 0) {
-          document.getElementById('sop-tbody').innerHTML = `<tr><td colspan="18" style="text-align:center; padding: 40px;">⚠️ Dados granulares não encontrados.</td></tr>`;
+        if (typeof dashboardData === 'undefined') {
+          document.getElementById('main-content').innerHTML = `<div style="background: var(--surface); border: 1px solid var(--danger); border-radius: var(--radius); padding: 40px; text-align: center;"><h2 style="font-size: 24px; margin-bottom: 16px; color: var(--danger);">⚠️ Base de Dados Não Encontrada</h2><p style="color: var(--muted); font-family: var(--font-mono);">O arquivo <b>dados_dashboard.js</b> não foi carregado pelo HTML.</p></div>`;
           return;
         }
 
-        const getSiacespDate = (row) => row["Z_PERÍODO"] || row["PERÍODO"] || row.data_operacao || row.Data;
-        const getSiacespVol = (row) => parseFloat(row["VOLUME"] || row.volume || row.Volume) || 0;
-        const getSiacespProd = (row) => row["Y_PRODUTO PARA"] || row.PRODUTO || row.produto || row.Produto;
+        const formatNumber = (num) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
+        const formatCompact = (num) => new Intl.NumberFormat('pt-BR', { notation: "compact", maximumFractionDigits: 2 }).format(num);
+        const calcPercent = (disc, base) => { if (!base || base === 0) return null; return (disc / base) * 100; };
+        const renderPercentHtml = (percent) => {
+          if (percent === null) return `<span class="percent-neutral">Sem Ref.</span>`;
+          const prefix = percent > 0 ? '+' : '';
+          const colorClass = Math.abs(percent) > 5 ? (percent < 0 ? 'percent-red' : 'percent-green') : 'percent-neutral';
+          return `<span class="percent-badge ${colorClass}">${prefix}${percent.toFixed(2)}%</span>`;
+        };
 
-        const getFonte = (row) => row["FONTE_DADOS"] || "DESCONHECIDA";
-        const getLineupPosDate = (row) => row["DATA POSIÇÃO"] || row["DATA_POSIÇÃO"] || row["Z_DATA_POSIÇÃO"] || row.data_posicao || row.Data;
-        const getLineupEtb = (row) => row["ETB"] || row["Z_ETB"] || row.etb;
-        const getLineupVol = (row) => parseFloat(row["Qtty"] || row["QUANTITY"] || row["WEIGHT"] || row["TONNAGE"] || row["VOLUME"] || row.volume || row.Volume) || 0;
-        const getLineupProd = (row) => row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.PRODUTO || row.produto || row.Produto;
+        // ==========================================
+        // LÓGICA DA ABA S&OP SEMANAL (SCALABLE)
+        // ==========================================
+        function renderizarSOP() {
+          const rawSiacesp = dashboardData.siacesp_raw || [];
+          const rawLineup = dashboardData.lineup_raw || [];
 
-        // Normalização robusta de Data para o padrão ISO (YYYY-MM-DD)
-        const padronizarDataISO = (dStr) => {
-          if (!dStr) return null;
-          let str = String(dStr).split(' ')[0].split('T')[0];
-          if (str.includes('/')) {
-            let parts = str.split('/');
-            if (parts.length === 3 && parts[2].length === 4) {
-              let m = parts[1].padStart(2, '0');
-              let d = parts[0].padStart(2, '0');
-              if (parseInt(m) > 12) { m = parts[0].padStart(2, '0'); d = parts[1].padStart(2, '0'); }
-              return `${parts[2]}-${m}-${d}`;
-            }
+          if (rawSiacesp.length === 0 || rawLineup.length === 0) {
+            document.getElementById('sop-tbody').innerHTML = `<tr><td colspan="18" style="text-align:center; padding: 40px;">⚠️ Dados granulares não encontrados.</td></tr>`;
+            return;
           }
-          return str;
-        };
 
-        const getMesAno = (dateStr) => {
-          let iso = padronizarDataISO(dateStr);
-          return iso ? iso.substring(0, 7) : '1900-01';
-        };
+          const getSiacespDate = (row) => row["Z_PERÍODO"] || row["PERÍODO"] || row.data_operacao || row.Data;
+          const getSiacespVol = (row) => parseFloat(row["VOLUME"] || row.volume || row.Volume) || 0;
+          const getSiacespProd = (row) => row["Y_PRODUTO PARA"] || row.PRODUTO || row.produto || row.Produto;
 
-        const addMonths = (yyyyMm, monthsToAdd) => {
-          let [year, month] = yyyyMm.split('-').map(Number);
-          month += monthsToAdd;
-          while (month > 12) { month -= 12; year += 1; }
-          while (month < 1) { month += 12; year -= 1; }
-          return `${year}-${String(month).padStart(2, '0')}`;
-        };
+          const getFonte = (row) => row["FONTE_DADOS"] || "DESCONHECIDA";
+          const getLineupPosDate = (row) => row["DATA POSIÇÃO"] || row["DATA_POSIÇÃO"] || row["Z_DATA_POSIÇÃO"] || row.data_posicao || row.Data;
+          const getLineupEtb = (row) => row["ETB"] || row["Z_ETB"] || row.etb;
+          const getLineupVol = (row) => parseFloat(row["Qtty"] || row["QUANTITY"] || row["WEIGHT"] || row["TONNAGE"] || row["VOLUME"] || row.volume || row.Volume) || 0;
+          const getLineupProd = (row) => row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.PRODUTO || row.produto || row.Produto;
 
-        const getMonthName = (yyyyMm) => {
-          const [y, m] = yyyyMm.split('-');
-          return new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase();
-        };
-
-        const padronizarProduto = (nome) => {
-          if (!nome) return 'OUTROS';
-          let n = nome.toUpperCase().trim();
-          if (n.startsWith('MES')) return 'NP';
-          if (n === 'UREIA') return 'UREA'; // Unifica nomenclaturas
-          return n;
-        };
-
-        const mesesSiacesp = [...new Set(rawSiacesp.map(d => getMesAno(getSiacespDate(d))))].filter(m => m && m !== '1900-01').sort();
-        const ultimoMesSiacesp = mesesSiacesp[mesesSiacesp.length - 1];
-        const anoAtual = parseInt(ultimoMesSiacesp.split('-')[0]);
-        const anoAnterior = anoAtual - 1;
-
-        const mes1 = addMonths(ultimoMesSiacesp, 1);
-        const mes2 = addMonths(ultimoMesSiacesp, 2);
-        const mes3 = addMonths(ultimoMesSiacesp, 3);
-        const mesesAlvo = [mes1, mes2, mes3];
-
-        document.getElementById('sop-subtitle').textContent = `Base Fechada SIACESP: ${ultimoMesSiacesp} | Projeção Multi-Lineup: ${getMonthName(mes1)} a ${getMonthName(mes3)}`;
-
-        // ===============================================
-        // DESCOBRIR SEMANAS POR FONTE (COM ORDENAÇÃO ISO)
-        // ===============================================
-        const datasPorFonte = {};
-        rawLineup.forEach(row => {
-          const f = getFonte(row);
-          const dtISO = padronizarDataISO(getLineupPosDate(row));
-          if (dtISO) {
-            if (!datasPorFonte[f]) datasPorFonte[f] = new Set();
-            datasPorFonte[f].add(dtISO);
-          }
-        });
-
-        const semanaMapAtual = {};
-        const semanaMapPassada = {};
-        Object.keys(datasPorFonte).forEach(f => {
-          const sorted = Array.from(datasPorFonte[f]).sort(); // Agora o sort alfabético funciona perfeitamente (YYYY-MM-DD)
-          semanaMapAtual[f] = sorted[sorted.length - 1];
-          semanaMapPassada[f] = sorted.length > 1 ? sorted[sorted.length - 2] : sorted[sorted.length - 1];
-        });
-
-        // ===============================================
-        // PROCESSAMENTO COM MÉDIAS MÚLTIPLAS
-        // ===============================================
-        const configSop = dashboardData.config_sop || {};
-        const fontesCarregadasGlobais = [...new Set(rawLineup.map(getFonte).filter(Boolean))];
-
-        const getConfigMes = (mesIdx) => {
-          const conf = configSop[mesIdx + 1];
-          return (conf && conf.length > 0) ? conf : fontesCarregadasGlobais;
-        };
-
-        const processarLineup = (dados, isAtual) => {
-          let aggregated = { total: [0, 0, 0], produtos: {} };
-          let temp = [{ fontes: {}, produtos: {} }, { fontes: {}, produtos: {} }, { fontes: {}, produtos: {} }];
-
-          dados.forEach(row => {
-            const fonte = getFonte(row);
-            const dtPosISO = padronizarDataISO(getLineupPosDate(row));
-            const dataAlvo = isAtual ? semanaMapAtual[fonte] : semanaMapPassada[fonte];
-
-            if (dtPosISO === dataAlvo) {
-              const mesEtb = getMesAno(getLineupEtb(row));
-              const idxMes = mesesAlvo.indexOf(mesEtb);
-
-              if (idxMes > -1) {
-                const fontesPermitidas = getConfigMes(idxMes);
-                if (fontesPermitidas.includes(fonte)) {
-                  const prod = padronizarProduto(getLineupProd(row));
-                  const vol = getLineupVol(row);
-
-                  temp[idxMes].fontes[fonte] = (temp[idxMes].fontes[fonte] || 0) + vol;
-                  if (!temp[idxMes].produtos[prod]) temp[idxMes].produtos[prod] = {};
-                  temp[idxMes].produtos[prod][fonte] = (temp[idxMes].produtos[prod][fonte] || 0) + vol;
-                }
+          // Normalização robusta de Data para o padrão ISO (YYYY-MM-DD)
+          const padronizarDataISO = (dStr) => {
+            if (!dStr) return null;
+            let str = String(dStr).split(' ')[0].split('T')[0];
+            if (str.includes('/')) {
+              let parts = str.split('/');
+              if (parts.length === 3 && parts[2].length === 4) {
+                let m = parts[1].padStart(2, '0');
+                let d = parts[0].padStart(2, '0');
+                if (parseInt(m) > 12) { m = parts[0].padStart(2, '0'); d = parts[1].padStart(2, '0'); }
+                return `${parts[2]}-${m}-${d}`;
               }
             }
+            return str;
+          };
+
+          const getMesAno = (dateStr) => {
+            let iso = padronizarDataISO(dateStr);
+            return iso ? iso.substring(0, 7) : '1900-01';
+          };
+
+          const addMonths = (yyyyMm, monthsToAdd) => {
+            let [year, month] = yyyyMm.split('-').map(Number);
+            month += monthsToAdd;
+            while (month > 12) { month -= 12; year += 1; }
+            while (month < 1) { month += 12; year -= 1; }
+            return `${year}-${String(month).padStart(2, '0')}`;
+          };
+
+          const getMonthName = (yyyyMm) => {
+            const [y, m] = yyyyMm.split('-');
+            return new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase();
+          };
+
+          const padronizarProduto = (nome) => {
+            if (!nome) return 'OUTROS';
+            let n = nome.toUpperCase().trim();
+            if (n.startsWith('MES')) return 'NP';
+            if (n === 'UREIA') return 'UREA'; // Unifica nomenclaturas
+            return n;
+          };
+
+          const mesesSiacesp = [...new Set(rawSiacesp.map(d => getMesAno(getSiacespDate(d))))].filter(m => m && m !== '1900-01').sort();
+          const ultimoMesSiacesp = mesesSiacesp[mesesSiacesp.length - 1];
+          const anoAtual = parseInt(ultimoMesSiacesp.split('-')[0]);
+          const anoAnterior = anoAtual - 1;
+
+          const mes1 = addMonths(ultimoMesSiacesp, 1);
+          const mes2 = addMonths(ultimoMesSiacesp, 2);
+          const mes3 = addMonths(ultimoMesSiacesp, 3);
+          const mesesAlvo = [mes1, mes2, mes3];
+
+          document.getElementById('sop-subtitle').textContent = `Base Fechada SIACESP: ${ultimoMesSiacesp} | Projeção Multi-Lineup: ${getMonthName(mes1)} a ${getMonthName(mes3)}`;
+
+          // ===============================================
+          // DESCOBRIR SEMANAS POR FONTE (COM ORDENAÇÃO ISO)
+          // ===============================================
+          const datasPorFonte = {};
+          rawLineup.forEach(row => {
+            const f = getFonte(row);
+            const dtISO = padronizarDataISO(getLineupPosDate(row));
+            if (dtISO) {
+              if (!datasPorFonte[f]) datasPorFonte[f] = new Set();
+              datasPorFonte[f].add(dtISO);
+            }
           });
+
+          const semanaMapAtual = {};
+          const semanaMapPassada = {};
+          Object.keys(datasPorFonte).forEach(f => {
+            const sorted = Array.from(datasPorFonte[f]).sort(); // Agora o sort alfabético funciona perfeitamente (YYYY-MM-DD)
+            semanaMapAtual[f] = sorted[sorted.length - 1];
+            semanaMapPassada[f] = sorted.length > 1 ? sorted[sorted.length - 2] : sorted[sorted.length - 1];
+          });
+
+          // ===============================================
+          // PROCESSAMENTO COM MÉDIAS MÚLTIPLAS
+          // ===============================================
+          const configSop = dashboardData.config_sop || {};
+          const fontesCarregadasGlobais = [...new Set(rawLineup.map(getFonte).filter(Boolean))];
+
+          const getConfigMes = (mesIdx) => {
+            const conf = configSop[mesIdx + 1];
+            return (conf && conf.length > 0) ? conf : fontesCarregadasGlobais;
+          };
+
+          const processarLineup = (dados, isAtual) => {
+            let aggregated = { total: [0, 0, 0], produtos: {} };
+            let temp = [{ fontes: {}, produtos: {} }, { fontes: {}, produtos: {} }, { fontes: {}, produtos: {} }];
+
+            dados.forEach(row => {
+              const fonte = getFonte(row);
+              const dtPosISO = padronizarDataISO(getLineupPosDate(row));
+              const dataAlvo = isAtual ? semanaMapAtual[fonte] : semanaMapPassada[fonte];
+
+              if (dtPosISO === dataAlvo) {
+                const mesEtb = getMesAno(getLineupEtb(row));
+                const idxMes = mesesAlvo.indexOf(mesEtb);
+
+                if (idxMes > -1) {
+                  const fontesPermitidas = getConfigMes(idxMes);
+                  if (fontesPermitidas.includes(fonte)) {
+                    const prod = padronizarProduto(getLineupProd(row));
+                    const vol = getLineupVol(row);
+
+                    temp[idxMes].fontes[fonte] = (temp[idxMes].fontes[fonte] || 0) + vol;
+                    if (!temp[idxMes].produtos[prod]) temp[idxMes].produtos[prod] = {};
+                    temp[idxMes].produtos[prod][fonte] = (temp[idxMes].produtos[prod][fonte] || 0) + vol;
+                  }
+                }
+              }
+            });
+
+            mesesAlvo.forEach((mes, idx) => {
+              const fontesPermitidas = getConfigMes(idx);
+              // O Divisor só contabiliza as fontes que você configurou e que REALMENTE existem no banco de dados.
+              const divisor = Math.max(1, fontesPermitidas.filter(f => fontesCarregadasGlobais.includes(f)).length);
+
+              let sumTotal = Object.values(temp[idx].fontes).reduce((a, b) => a + b, 0);
+              aggregated.total[idx] = sumTotal / divisor;
+
+              Object.keys(temp[idx].produtos).forEach(prod => {
+                let sumProd = Object.values(temp[idx].produtos[prod]).reduce((a, b) => a + b, 0);
+                if (!aggregated.produtos[prod]) aggregated.produtos[prod] = [0, 0, 0];
+                aggregated.produtos[prod][idx] = sumProd / divisor;
+              });
+            });
+
+            return aggregated;
+          };
+
+          const lineupAtual = processarLineup(rawLineup, true);
+          const lineupPassado = processarLineup(rawLineup, false);
+
+          // Processar SIACESP 
+          const calcSiacespYTD = (dados, ano, mesLimite) => {
+            const limiteAnoMes = `${ano}-${mesLimite.split('-')[1]}`;
+            let total = 0; let prodTotais = {};
+            dados.forEach(row => {
+              const mesRow = getMesAno(getSiacespDate(row));
+              if (mesRow >= `${ano}-01` && mesRow <= limiteAnoMes) {
+                const vol = getSiacespVol(row);
+                const prod = padronizarProduto(getSiacespProd(row));
+                total += vol;
+                if (!prodTotais[prod]) prodTotais[prod] = 0;
+                prodTotais[prod] += vol;
+              }
+            });
+            return { total, prodTotais };
+          };
+
+          // Siacesp Isolado por Mês (Para a visão de Semanas)
+          const calcSiacespMesIsolado = (dados, ano, mesAlvoIso) => {
+            let total = 0; let prodTotais = {};
+            dados.forEach(row => {
+              const mesRow = getMesAno(getSiacespDate(row));
+              if (mesRow === mesAlvoIso) {
+                const vol = getSiacespVol(row);
+                const prod = padronizarProduto(getSiacespProd(row));
+                total += vol;
+                if (!prodTotais[prod]) prodTotais[prod] = 0;
+                prodTotais[prod] += vol;
+              }
+            });
+            return { total, prodTotais };
+          };
+
+          const ytdAtualBase = calcSiacespYTD(rawSiacesp, anoAtual, ultimoMesSiacesp);
+          const ytdAntMes1 = calcSiacespYTD(rawSiacesp, anoAnterior, mes1);
+          const ytdAntMes2 = calcSiacespYTD(rawSiacesp, anoAnterior, mes2);
+          const ytdAntMes3 = calcSiacespYTD(rawSiacesp, anoAnterior, mes3);
+
+          const isoAntMes1 = calcSiacespMesIsolado(rawSiacesp, anoAnterior, `${anoAnterior}-${mes1.split('-')[1]}`);
+          const isoAntMes2 = calcSiacespMesIsolado(rawSiacesp, anoAnterior, `${anoAnterior}-${mes2.split('-')[1]}`);
+          const isoAntMes3 = calcSiacespMesIsolado(rawSiacesp, anoAnterior, `${anoAnterior}-${mes3.split('-')[1]}`);
+
+          // Renderizar KPIs
+          const renderDiff = (atual, passado) => {
+            const diff = atual - passado;
+            if (diff === 0) return `<span class="sop-diff-neutral">0 (0%)</span>`;
+            const percent = passado === 0 ? 100 : (diff / passado) * 100;
+            const cls = diff > 0 ? 'sop-diff-positive' : 'sop-diff-negative';
+            const prefix = diff > 0 ? '+' : '';
+            return `<span class="${cls}">${prefix}${formatNumber(diff)} (${prefix}${percent.toFixed(1)}%)</span>`;
+          };
+
+          const kpiContainer = document.getElementById('sop-kpi-container');
+          let kpiHtml = '';
+          let total3MesesAtual = 0;
+          let total3MesesPassado = 0;
 
           mesesAlvo.forEach((mes, idx) => {
-            const fontesPermitidas = getConfigMes(idx);
-            // O Divisor só contabiliza as fontes que você configurou e que REALMENTE existem no banco de dados.
-            const divisor = Math.max(1, fontesPermitidas.filter(f => fontesCarregadasGlobais.includes(f)).length);
+            total3MesesAtual += lineupAtual.total[idx];
+            total3MesesPassado += lineupPassado.total[idx];
+            const fontesDoMes = getConfigMes(idx).join(', ');
 
-            let sumTotal = Object.values(temp[idx].fontes).reduce((a, b) => a + b, 0);
-            aggregated.total[idx] = sumTotal / divisor;
-
-            Object.keys(temp[idx].produtos).forEach(prod => {
-              let sumProd = Object.values(temp[idx].produtos[prod]).reduce((a, b) => a + b, 0);
-              if (!aggregated.produtos[prod]) aggregated.produtos[prod] = [0, 0, 0];
-              aggregated.produtos[prod][idx] = sumProd / divisor;
-            });
-          });
-
-          return aggregated;
-        };
-
-        const lineupAtual = processarLineup(rawLineup, true);
-        const lineupPassado = processarLineup(rawLineup, false);
-
-        // Processar SIACESP 
-        const calcSiacespYTD = (dados, ano, mesLimite) => {
-          const limiteAnoMes = `${ano}-${mesLimite.split('-')[1]}`;
-          let total = 0; let prodTotais = {};
-          dados.forEach(row => {
-            const mesRow = getMesAno(getSiacespDate(row));
-            if (mesRow >= `${ano}-01` && mesRow <= limiteAnoMes) {
-              const vol = getSiacespVol(row);
-              const prod = padronizarProduto(getSiacespProd(row));
-              total += vol;
-              if (!prodTotais[prod]) prodTotais[prod] = 0;
-              prodTotais[prod] += vol;
-            }
-          });
-          return { total, prodTotais };
-        };
-
-        // Siacesp Isolado por Mês (Para a visão de Semanas)
-        const calcSiacespMesIsolado = (dados, ano, mesAlvoIso) => {
-          let total = 0; let prodTotais = {};
-          dados.forEach(row => {
-            const mesRow = getMesAno(getSiacespDate(row));
-            if (mesRow === mesAlvoIso) {
-              const vol = getSiacespVol(row);
-              const prod = padronizarProduto(getSiacespProd(row));
-              total += vol;
-              if (!prodTotais[prod]) prodTotais[prod] = 0;
-              prodTotais[prod] += vol;
-            }
-          });
-          return { total, prodTotais };
-        };
-
-        const ytdAtualBase = calcSiacespYTD(rawSiacesp, anoAtual, ultimoMesSiacesp);
-        const ytdAntMes1 = calcSiacespYTD(rawSiacesp, anoAnterior, mes1);
-        const ytdAntMes2 = calcSiacespYTD(rawSiacesp, anoAnterior, mes2);
-        const ytdAntMes3 = calcSiacespYTD(rawSiacesp, anoAnterior, mes3);
-
-        const isoAntMes1 = calcSiacespMesIsolado(rawSiacesp, anoAnterior, `${anoAnterior}-${mes1.split('-')[1]}`);
-        const isoAntMes2 = calcSiacespMesIsolado(rawSiacesp, anoAnterior, `${anoAnterior}-${mes2.split('-')[1]}`);
-        const isoAntMes3 = calcSiacespMesIsolado(rawSiacesp, anoAnterior, `${anoAnterior}-${mes3.split('-')[1]}`);
-
-        // Renderizar KPIs
-        const renderDiff = (atual, passado) => {
-          const diff = atual - passado;
-          if (diff === 0) return `<span class="sop-diff-neutral">0 (0%)</span>`;
-          const percent = passado === 0 ? 100 : (diff / passado) * 100;
-          const cls = diff > 0 ? 'sop-diff-positive' : 'sop-diff-negative';
-          const prefix = diff > 0 ? '+' : '';
-          return `<span class="${cls}">${prefix}${formatNumber(diff)} (${prefix}${percent.toFixed(1)}%)</span>`;
-        };
-
-        const kpiContainer = document.getElementById('sop-kpi-container');
-        let kpiHtml = '';
-        let total3MesesAtual = 0;
-        let total3MesesPassado = 0;
-
-        mesesAlvo.forEach((mes, idx) => {
-          total3MesesAtual += lineupAtual.total[idx];
-          total3MesesPassado += lineupPassado.total[idx];
-          const fontesDoMes = getConfigMes(idx).join(', ');
-
-          kpiHtml += `
+            kpiHtml += `
             <div class="kpi-card" style="background: var(--sop-header-bg);">
               <div class="kpi-label">Proj. ${getMonthName(mes)}</div>
               <div class="kpi-value">${formatNumber(lineupAtual.total[idx])} t</div>
@@ -1004,19 +1005,19 @@
               </div>
             </div>
           `;
-        });
+          });
 
-        kpiHtml += `
+          kpiHtml += `
           <div class="kpi-card" style="border: 2px solid var(--black);">
             <div class="kpi-label" style="color: var(--black);">Trimestre Projetado</div>
             <div class="kpi-value">${formatNumber(total3MesesAtual)} t</div>
             <div class="kpi-label" style="margin-top:16px; margin-bottom:0; text-transform:none;">Vs Sem. Anterior: ${renderDiff(total3MesesAtual, total3MesesPassado)}</div>
           </div>
         `;
-        kpiContainer.innerHTML = kpiHtml;
+          kpiContainer.innerHTML = kpiHtml;
 
-        // Renderizar Tabela
-        document.getElementById('sop-thead-row1').innerHTML = `
+          // Renderizar Tabela
+          document.getElementById('sop-thead-row1').innerHTML = `
           <th rowspan="2">PRODUTO</th>
           <th colspan="3">JUNHO</th>
           <th colspan="3">JULHO</th>
@@ -1026,7 +1027,7 @@
           <th colspan="3" class="border-thick">ACUM. (JAN-${getMonthName(mes3)})</th>
         `.replace('JUNHO', getMonthName(mes1)).replace('JULHO', getMonthName(mes2)).replace('AGOSTO', getMonthName(mes3));
 
-        document.getElementById('sop-thead-row2').innerHTML = `
+          document.getElementById('sop-thead-row2').innerHTML = `
           <th>Lineup ${anoAtual}</th> <th>Siacesp ${anoAnterior}</th> <th>Dif.</th> 
           <th>Lineup ${anoAtual}</th> <th>Siacesp ${anoAnterior}</th> <th>Dif.</th> 
           <th>Lineup ${anoAtual}</th> <th>Siacesp ${anoAnterior}</th> <th>Dif.</th>
@@ -1035,38 +1036,38 @@
           <th class="border-thick">Proj ${anoAtual}</th><th>${anoAnterior}</th><th>Var %</th>
         `;
 
-        const produtosObrigatorios = ['MOP', 'SAM', 'UREA', 'MAP', 'NP', 'SSP', 'TSP'];
-        let tbodyHtml = '';
+          const produtosObrigatorios = ['MOP', 'SAM', 'UREA', 'MAP', 'NP', 'SSP', 'TSP'];
+          let tbodyHtml = '';
 
-        const renderVarPerc = (atual, anterior) => {
-          if (!anterior || anterior === 0) return '-';
-          const percent = ((atual / anterior) - 1) * 100;
-          const cls = percent > 0 ? 'sop-diff-positive' : (percent < 0 ? 'sop-diff-negative' : 'sop-diff-neutral');
-          return `<span class="${cls}">${percent > 0 ? '+' : ''}${percent.toFixed(1)}%</span>`;
-        };
+          const renderVarPerc = (atual, anterior) => {
+            if (!anterior || anterior === 0) return '-';
+            const percent = ((atual / anterior) - 1) * 100;
+            const cls = percent > 0 ? 'sop-diff-positive' : (percent < 0 ? 'sop-diff-negative' : 'sop-diff-neutral');
+            return `<span class="${cls}">${percent > 0 ? '+' : ''}${percent.toFixed(1)}%</span>`;
+          };
 
-        const gerarLinha = (nome, isTotal = false) => {
-          const lAt = (isTotal ? lineupAtual.total : lineupAtual.produtos[nome]) || [0, 0, 0];
-          const lPa = (isTotal ? lineupPassado.total : lineupPassado.produtos[nome]) || [0, 0, 0];
+          const gerarLinha = (nome, isTotal = false) => {
+            const lAt = (isTotal ? lineupAtual.total : lineupAtual.produtos[nome]) || [0, 0, 0];
+            const lPa = (isTotal ? lineupPassado.total : lineupPassado.produtos[nome]) || [0, 0, 0];
 
-          const sBase = isTotal ? ytdAtualBase.total : (ytdAtualBase.prodTotais[nome] || 0);
-          const a1 = isTotal ? ytdAntMes1.total : (ytdAntMes1.prodTotais[nome] || 0);
-          const a2 = isTotal ? ytdAntMes2.total : (ytdAntMes2.prodTotais[nome] || 0);
-          const a3 = isTotal ? ytdAntMes3.total : (ytdAntMes3.prodTotais[nome] || 0);
+            const sBase = isTotal ? ytdAtualBase.total : (ytdAtualBase.prodTotais[nome] || 0);
+            const a1 = isTotal ? ytdAntMes1.total : (ytdAntMes1.prodTotais[nome] || 0);
+            const a2 = isTotal ? ytdAntMes2.total : (ytdAntMes2.prodTotais[nome] || 0);
+            const a3 = isTotal ? ytdAntMes3.total : (ytdAntMes3.prodTotais[nome] || 0);
 
-          const iso1 = isTotal ? isoAntMes1.total : (isoAntMes1.prodTotais[nome] || 0);
-          const iso2 = isTotal ? isoAntMes2.total : (isoAntMes2.prodTotais[nome] || 0);
-          const iso3 = isTotal ? isoAntMes3.total : (isoAntMes3.prodTotais[nome] || 0);
+            const iso1 = isTotal ? isoAntMes1.total : (isoAntMes1.prodTotais[nome] || 0);
+            const iso2 = isTotal ? isoAntMes2.total : (isoAntMes2.prodTotais[nome] || 0);
+            const iso3 = isTotal ? isoAntMes3.total : (isoAntMes3.prodTotais[nome] || 0);
 
-          const cen1Proj = sBase + lAt[0];
-          const cen2Proj = cen1Proj + lAt[1];
-          const cen3Proj = cen2Proj + lAt[2];
+            const cen1Proj = sBase + lAt[0];
+            const cen2Proj = cen1Proj + lAt[1];
+            const cen3Proj = cen2Proj + lAt[2];
 
-          const trClass = isTotal ? 'class="sop-total-row"' : '';
-          let nomeExibicao = nome === 'NP' ? 'NP+NPS+MES' : nome;
-          if (nome === 'UREA') nomeExibicao = 'UREIA'; // Ajuste visual de exibição
+            const trClass = isTotal ? 'class="sop-total-row"' : '';
+            let nomeExibicao = nome === 'NP' ? 'NP+NPS+MES' : nome;
+            if (nome === 'UREA') nomeExibicao = 'UREIA'; // Ajuste visual de exibição
 
-          return `
+            return `
             <tr ${trClass}>
               <td>${nomeExibicao}</td>
               
@@ -1079,59 +1080,59 @@
               <td class="border-thick">${formatNumber(cen3Proj)}</td> <td>${formatNumber(a3)}</td> <td>${renderVarPerc(cen3Proj, a3)}</td>
             </tr>
           `;
-        };
+          };
 
-        produtosObrigatorios.forEach(prod => { tbodyHtml += gerarLinha(prod, false); });
-        tbodyHtml += gerarLinha('TODOS', true);
-        document.getElementById('sop-tbody').innerHTML = tbodyHtml;
-      }
+          produtosObrigatorios.forEach(prod => { tbodyHtml += gerarLinha(prod, false); });
+          tbodyHtml += gerarLinha('TODOS', true);
+          document.getElementById('sop-tbody').innerHTML = tbodyHtml;
+        }
 
-      // ==========================================
-      // LÓGICA DAS ABAS COMPARATIVAS ANTIGAS
-      // ==========================================
-      let volTotal = 0;
-      if (dashboardData.siacesp_base && dashboardData.siacesp_base.length > 0) {
-        volTotal = dashboardData.siacesp_base.reduce((acc, row) => acc + (row["Volume_SIACESP"] || 0), 0);
-      }
-      document.getElementById('kpi-vol-total').textContent = formatCompact(volTotal);
+        // ==========================================
+        // LÓGICA DAS ABAS COMPARATIVAS ANTIGAS
+        // ==========================================
+        let volTotal = 0;
+        if (dashboardData.siacesp_base && dashboardData.siacesp_base.length > 0) {
+          volTotal = dashboardData.siacesp_base.reduce((acc, row) => acc + (row["Volume_SIACESP"] || 0), 0);
+        }
+        document.getElementById('kpi-vol-total').textContent = formatCompact(volTotal);
 
-      const fontes = new Set((dashboardData.resumo || []).map(r => r["Fonte Line Up"]).filter(Boolean));
-      document.getElementById('kpi-fontes-count').textContent = fontes.size;
-      document.getElementById('kpi-fontes-names').textContent = Array.from(fontes).join(', ') || '-';
+        const fontes = new Set((dashboardData.resumo || []).map(r => r["Fonte Line Up"]).filter(Boolean));
+        document.getElementById('kpi-fontes-count').textContent = fontes.size;
+        document.getElementById('kpi-fontes-names').textContent = Array.from(fontes).join(', ') || '-';
 
-      const populateTable = (tableId, data, includeSource = false) => {
-        const tbody = document.querySelector(`#${tableId} tbody`);
-        const tfoot = document.querySelector(`#${tableId} tfoot`);
-        if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sem dados</td></tr>'; return; }
+        const populateTable = (tableId, data, includeSource = false) => {
+          const tbody = document.querySelector(`#${tableId} tbody`);
+          const tfoot = document.querySelector(`#${tableId} tfoot`);
+          if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sem dados</td></tr>'; return; }
 
-        let totalLineUp = 0; let totalSiacesp = 0; let totalDisc = 0; let somaErrosAbsolutos = 0;
-        data.forEach(row => {
-          if (!row["Y_PRODUTO PARA"]) return;
-          const vLineUp = row["Volume_LineUp"] || 0;
-          const vSiacesp = row["Volume_SIACESP"] || 0;
-          const disc = row["Discrepancia"] || 0;
+          let totalLineUp = 0; let totalSiacesp = 0; let totalDisc = 0; let somaErrosAbsolutos = 0;
+          data.forEach(row => {
+            if (!row["Y_PRODUTO PARA"]) return;
+            const vLineUp = row["Volume_LineUp"] || 0;
+            const vSiacesp = row["Volume_SIACESP"] || 0;
+            const disc = row["Discrepancia"] || 0;
 
-          totalLineUp += vLineUp; totalSiacesp += vSiacesp; totalDisc += disc; somaErrosAbsolutos += Math.abs(disc);
-          const pDisc = calcPercent(disc, vSiacesp);
-          const discClass = disc < 0 ? 'discrepancy-negative' : 'discrepancy-positive';
+            totalLineUp += vLineUp; totalSiacesp += vSiacesp; totalDisc += disc; somaErrosAbsolutos += Math.abs(disc);
+            const pDisc = calcPercent(disc, vSiacesp);
+            const discClass = disc < 0 ? 'discrepancy-negative' : 'discrepancy-positive';
 
-          let html = '';
-          if (includeSource) html += `<td><strong>${row["Fonte Line Up"] || '-'}</strong></td>`;
-          html += `
+            let html = '';
+            if (includeSource) html += `<td><strong>${row["Fonte Line Up"] || '-'}</strong></td>`;
+            html += `
             <td>${row["Y_PRODUTO PARA"]}</td>
             <td class="right mono">${formatNumber(vLineUp)}</td>
             <td class="right mono">${formatNumber(vSiacesp)}</td>
             <td class="right mono ${discClass}"><span class="discrepancy-badge">${formatNumber(disc)}</span></td>
             <td class="right">${renderPercentHtml(pDisc)}</td>
           `;
-          const tr = document.createElement('tr');
-          tr.innerHTML = html;
-          tbody.appendChild(tr);
-        });
+            const tr = document.createElement('tr');
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+          });
 
-        const totalPercent = calcPercent(somaErrosAbsolutos, totalSiacesp);
-        const colSpan = includeSource ? 2 : 1;
-        tfoot.innerHTML = `
+          const totalPercent = calcPercent(somaErrosAbsolutos, totalSiacesp);
+          const colSpan = includeSource ? 2 : 1;
+          tfoot.innerHTML = `
           <tr>
             <td colspan="${colSpan}" style="text-align: left; text-transform: uppercase; font-size: 11px;">WAPE (Weighted Average Percentage Error)</td>
             <td class="right mono">${formatNumber(totalLineUp)}</td>
@@ -1140,201 +1141,192 @@
             <td class="right">${renderPercentHtml(totalPercent)}</td>
           </tr>
         `;
-      };
+        };
 
-      if (dashboardData.unimar) populateTable('table-unimar', dashboardData.unimar);
-      if (dashboardData.transatlantica) populateTable('table-transatlantica', dashboardData.transatlantica);
-      if (dashboardData.wilson) populateTable('table-wilson', dashboardData.wilson);
-      if (dashboardData.orion) populateTable('table-orion', dashboardData.orion);
+        if (dashboardData.unimar) populateTable('table-unimar', dashboardData.unimar);
+        if (dashboardData.transatlantica) populateTable('table-transatlantica', dashboardData.transatlantica);
+        if (dashboardData.wilson) populateTable('table-wilson', dashboardData.wilson);
+        if (dashboardData.orion) populateTable('table-orion', dashboardData.orion);
 
-      if (dashboardData.resumo) {
-        const validData = dashboardData.resumo.filter(d => d["Y_PRODUTO PARA"]);
-        const chartData1 = [...validData].sort((a, b) => Math.abs(b["Discrepancia"] || 0) - Math.abs(a["Discrepancia"] || 0)).slice(0, 8);
-        if (chartData1.length > 0) {
-          new Chart(document.getElementById('discChart').getContext('2d'), {
+        if (dashboardData.resumo) {
+          const validData = dashboardData.resumo.filter(d => d["Y_PRODUTO PARA"]);
+          const chartData1 = [...validData].sort((a, b) => Math.abs(b["Discrepancia"] || 0) - Math.abs(a["Discrepancia"] || 0)).slice(0, 8);
+          if (chartData1.length > 0) {
+            new Chart(document.getElementById('discChart').getContext('2d'), {
+              type: 'bar',
+              data: { labels: chartData1.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`), datasets: [{ data: chartData1.map(d => d["Discrepancia"] || 0), backgroundColor: '#58a6ff' }] },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false, grid: { color: '#21262d' } }, y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } } } }
+            });
+          }
+        }
+
+        const agentStats = [{ name: 'Unimar', data: dashboardData.unimar }, { name: 'Transatlântica', data: dashboardData.transatlantica }, { name: 'Wilson Sons', data: dashboardData.wilson }, { name: 'Orion', data: dashboardData.orion }];
+        const rankingData = [];
+
+        agentStats.forEach(agent => {
+          let sLineUp = 0;
+          let sSiacesp = 0;
+          let sAbsDisc = 0; // NOVA VARIÁVEL: Acumulador de erro absoluto (WAPE)
+
+          if (agent.data) {
+            agent.data.forEach(r => {
+              if (r["Y_PRODUTO PARA"]) {
+                sLineUp += (r["Volume_LineUp"] || 0);
+                sSiacesp += (r["Volume_SIACESP"] || 0);
+
+                // Acumula o erro daquele produto ignorando o sinal (módulo)
+                sAbsDisc += Math.abs(r["Discrepancia"] || 0);
+              }
+            });
+          }
+
+          // Agora a porcentagem do agente é a proporção do Erro Absoluto sobre o Real
+          const percent = calcPercent(sAbsDisc, sSiacesp) || 0;
+
+          // Como o WAPE (percent) agora é sempre positivo, absPercent será igual a ele, 
+          // mas mantemos a estrutura para não quebrar o seu código de ordenação (sort)
+          if (sSiacesp > 0) rankingData.push({ name: agent.name, percent: percent, absPercent: percent });
+        });
+
+        rankingData.sort((a, b) => a.absPercent - b.absPercent);
+        if (rankingData.length > 0) {
+          const bestAgent = rankingData[0];
+          document.getElementById('kpi-best-agent').textContent = bestAgent.name;
+          document.getElementById('kpi-best-agent-label').textContent = `Divergência: ${bestAgent.percent.toFixed(2)}%`;
+
+          new Chart(document.getElementById('rankingChart').getContext('2d'), {
             type: 'bar',
-            data: { labels: chartData1.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`), datasets: [{ data: chartData1.map(d => d["Discrepancia"] || 0), backgroundColor: '#58a6ff' }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false, grid: { color: '#21262d' } }, y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } } } }
-          });
-        }
-      }
-
-      const agentStats = [{ name: 'Unimar', data: dashboardData.unimar }, { name: 'Transatlântica', data: dashboardData.transatlantica }, { name: 'Wilson Sons', data: dashboardData.wilson }, { name: 'Orion', data: dashboardData.orion }];
-      const rankingData = [];
-
-      agentStats.forEach(agent => {
-        let sLineUp = 0;
-        let sSiacesp = 0;
-        let sAbsDisc = 0; // NOVA VARIÁVEL: Acumulador de erro absoluto (WAPE)
-
-        if (agent.data) {
-          agent.data.forEach(r => {
-            if (r["Y_PRODUTO PARA"]) {
-              sLineUp += (r["Volume_LineUp"] || 0);
-              sSiacesp += (r["Volume_SIACESP"] || 0);
-
-              // Acumula o erro daquele produto ignorando o sinal (módulo)
-              sAbsDisc += Math.abs(r["Discrepancia"] || 0);
+            data: {
+              labels: rankingData.map(d => d.name),
+              datasets: [{
+                data: rankingData.map(d => d.percent),
+                backgroundColor: rankingData.map((d, i) => i === 0 ? '#3fb950' : '#8b949e')
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
+                y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } }
+              }
             }
           });
         }
 
-        // Agora a porcentagem do agente é a proporção do Erro Absoluto sobre o Real
-        const percent = calcPercent(sAbsDisc, sSiacesp) || 0;
+        // ==========================================
+        // LÓGICA DE PESQUISA AVANÇADA E OVERLAP
+        // ==========================================
+        let SEARCH_DATA = [];
+        let SEARCH_FILTERED = [];
+        let chartSearchPort, chartSearchProduct, chartSearchTime, chartSearchAgent;
 
-        // Como o WAPE (percent) agora é sempre positivo, absPercent será igual a ele, 
-        // mas mantemos a estrutura para não quebrar o seu código de ordenação (sort)
-        if (sSiacesp > 0) rankingData.push({ name: agent.name, percent: percent, absPercent: percent });
-      });
-
-      rankingData.sort((a, b) => a.absPercent - b.absPercent);
-      if (rankingData.length > 0) {
-        const bestAgent = rankingData[0];
-        document.getElementById('kpi-best-agent').textContent = bestAgent.name;
-        document.getElementById('kpi-best-agent-label').textContent = `Divergência: ${bestAgent.percent.toFixed(2)}%`;
-
-        new Chart(document.getElementById('rankingChart').getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels: rankingData.map(d => d.name),
-            datasets: [{
-              data: rankingData.map(d => d.percent),
-              backgroundColor: rankingData.map((d, i) => i === 0 ? '#3fb950' : '#8b949e')
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
-              y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } }
+        function formatToISODate(dateStr) {
+          if (!dateStr) return '';
+          if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) return dateStr.substring(0, 10);
+          if (dateStr.includes('/')) {
+            let parts = dateStr.split('/');
+            if (parts.length === 3) {
+              let year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+              return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
           }
-        });
-      }
-
-      // ==========================================
-      // LÓGICA DE PESQUISA AVANÇADA E OVERLAP
-      // ==========================================
-      let SEARCH_DATA = [];
-      let SEARCH_FILTERED = [];
-      let chartSearchPort, chartSearchProduct, chartSearchTime, chartSearchAgent;
-
-      function formatToISODate(dateStr) {
-        if (!dateStr) return '';
-        if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) return dateStr.substring(0, 10);
-        if (dateStr.includes('/')) {
-          let parts = dateStr.split('/');
-          if (parts.length === 3) {
-            let year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-            return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-          }
+          return dateStr;
         }
-        return dateStr;
-      }
 
-      function initSearchTab() {
-        const rawLineup = dashboardData.lineup_raw || [];
+        function initSearchTab() {
+          const rawLineup = dashboardData.lineup_raw || [];
 
-        // Formata os dados puros para o Search Analytics
-        SEARCH_DATA = rawLineup.map(row => {
-          // 1. DATA: Adicionado Z_ETB (coluna padrão calculada)
-          const date = row.ETB || row["Z_ETB"] || row.etb || '';
+          // Formata os dados puros para o Search Analytics
+          SEARCH_DATA = rawLineup.map(row => {
+            // 1. DATA: Adicionado Z_ETB (coluna padrão calculada)
+            const date = row.ETB || row["Z_ETB"] || row.etb || '';
 
-          // 2. PORTO: Mapeando todas as variações (PORT, Port, POD, Z_PORT)
-          const port = row.PORT || row.Port || row.POD || row["Z_PORT"] || row["Z_PORTO"] || row.PORTO || 'N/D';
+            // 2. PORTO: Mapeando todas as variações (PORT, Port, POD, Z_PORT)
+            const port = row.PORT || row.Port || row.POD || row["Z_PORT"] || row["Z_PORTO"] || row.PORTO || 'N/D';
 
-          // 3. PRODUTO: Prioridade MÁXIMA para o 'Y_PRODUTO PARA' (nome já corrigido pelo De-Para)
-          const prod = row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.Produto || 'OUTROS';
+            // 3. PRODUTO: Prioridade MÁXIMA para o 'Y_PRODUTO PARA' (nome já corrigido pelo De-Para)
+            const prod = row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.Produto || 'OUTROS';
 
-          // 4. TONELADAS: Mapeando Qtty (Orion), QUANTITY (Transat), WEIGHT (Wilson) e TONNAGE (Futuro)
-          const volRaw = row.QUANTITY || row.Qtty || row.WEIGHT || row.TONNAGE || row.VOLUME || row.Volume || row.QTD || 0;
+            // 4. TONELADAS: Mapeando Qtty (Orion), QUANTITY (Transat), WEIGHT (Wilson) e TONNAGE (Futuro)
+            const volRaw = row.QUANTITY || row.Qtty || row.WEIGHT || row.TONNAGE || row.VOLUME || row.Volume || row.QTD || 0;
 
-          return {
-            ETB: formatToISODate(date),
-            PORTO: String(port).toUpperCase().trim(),
-            PRODUTO: String(prod).toUpperCase().trim(),
-            AGENTE: String(row["FONTE_DADOS"] || "DESCONHECIDA").toUpperCase().trim(),
-            TONELADAS: parseFloat(volRaw) || 0
-          };
-        });
+            return {
+              ETB: formatToISODate(date),
+              PORTO: String(port).toUpperCase().trim(),
+              PRODUTO: String(prod).toUpperCase().trim(),
+              AGENTE: String(row["FONTE_DADOS"] || "DESCONHECIDA").toUpperCase().trim(),
+              TONELADAS: parseFloat(volRaw) || 0
+            };
+          });
 
-        window.applySearchFilters = applySearchFilters;
-        window.resetSearchFilters = resetSearchFilters;
-        window.exportSearchExcel = exportSearchExcel;
+          window.applySearchFilters = applySearchFilters;
+          window.resetSearchFilters = resetSearchFilters;
+          window.exportSearchExcel = exportSearchExcel;
 
-        const product = document.getElementById('search-product');
-        const port = document.getElementById('search-port');
-        const agent = document.getElementById('search-agent');
+          const product = document.getElementById('search-product');
+          const port = document.getElementById('search-port');
+          const agent = document.getElementById('search-agent');
 
-        product.innerHTML = '';
-        port.innerHTML = '';
-        agent.innerHTML = '';
+          product.innerHTML = '';
+          port.innerHTML = '';
+          agent.innerHTML = '';
 
-        [...new Set(SEARCH_DATA.map(x => x.PRODUTO))].sort().forEach(v => { product.innerHTML += `<option value="${v}">${v}</option>`; });
-        [...new Set(SEARCH_DATA.map(x => x.PORTO))].sort().forEach(v => { port.innerHTML += `<option value="${v}">${v}</option>`; });
-        [...new Set(SEARCH_DATA.map(x => x.AGENTE))].sort().forEach(v => { agent.innerHTML += `<option value="${v}">${v}</option>`; });
+          const produtos = [...new Set(SEARCH_DATA.map(x => x.PRODUTO))].sort();
+          product.innerHTML = produtos.map(v => `<option value="${v}">${v}</option>`).join('');
 
-        applySearchFilters();
-      }
+          const portos = [...new Set(SEARCH_DATA.map(x => x.PORTO))].sort();
+          port.innerHTML = portos.map(v => `<option value="${v}">${v}</option>`).join('');
 
-      function getSelectedValues(id) {
-        return Array.from(document.getElementById(id).selectedOptions).map(o => o.value);
-      }
+          const agentes = [...new Set(SEARCH_DATA.map(x => x.AGENTE))].sort();
+          agent.innerHTML = agentes.map(v => `<option value="${v}">${v}</option>`).join('');
+          applySearchFilters();
+        }
 
-      function applySearchFilters() {
-        const start = document.getElementById('search-date-start').value;
-        const end = document.getElementById('search-date-end').value;
-        const products = getSelectedValues('search-product');
-        const ports = getSelectedValues('search-port');
-        const agents = getSelectedValues('search-agent');
+        function getSelectedValues(id) {
+          return Array.from(document.getElementById(id).selectedOptions).map(o => o.value);
+        }
 
-        SEARCH_FILTERED = SEARCH_DATA.filter(r => {
-          if (start && r.ETB < start) return false;
-          if (end && r.ETB > end) return false;
-          if (products.length && !products.includes(r.PRODUTO)) return false;
-          if (ports.length && !ports.includes(r.PORTO)) return false;
-          if (agents.length && !agents.includes(r.AGENTE)) return false;
-          return true;
-        });
+        function applySearchFilters() {
+          const start = document.getElementById('search-date-start').value;
+          const end = document.getElementById('search-date-end').value;
+          const products = getSelectedValues('search-product');
+          const ports = getSelectedValues('search-port');
+          const agents = getSelectedValues('search-agent');
 
-        renderSearchKPIs();
-        renderSearchCharts();
-        buildOverlapAnalysis();
-      }
+          SEARCH_FILTERED = SEARCH_DATA.filter(r => {
+            if (start && r.ETB < start) return false;
+            if (end && r.ETB > end) return false;
+            if (products.length && !products.includes(r.PRODUTO)) return false;
+            if (ports.length && !ports.includes(r.PORTO)) return false;
+            if (agents.length && !agents.includes(r.AGENTE)) return false;
+            return true;
+          });
 
-      function resetSearchFilters() {
-        document.querySelectorAll('.dropdown-check-list input[type="checkbox"]').forEach(checkbox => {
-          checkbox.checked = false;
-        });
+          renderSearchKPIs();
+          renderSearchCharts();
+          buildOverlapAnalysis();
+        }
 
-        // 2. Restaura o texto original de cada botão
-        const dropdownsCustomizados = [
-          { id: 'search-product', text: 'Todos os Produtos' },
-          { id: 'search-port', text: 'Todos os Portos' },
-          { id: 'search-agent', text: 'Todos os Agentes' }
-        ];
+        function resetSearchFilters() {
+          document.getElementById('search-date-start').value = '';
+          document.getElementById('search-date-end').value = '';
 
-        dropdownsCustomizados.forEach(dropdown => {
-          const selectElement = document.getElementById(dropdown.id);
-          // Busca o elemento customizado que foi criado logo após o select original
-          if (selectElement && selectElement.nextElementSibling) {
-            const anchorText = selectElement.nextElementSibling.querySelector('.anchor span');
-            if (anchorText) {
-              anchorText.textContent = dropdown.text;
-            }
-          }
-        });
+          ['search-product', 'search-port', 'search-agent'].forEach(id => {
+            const el = document.getElementById(id);
+            // Retira as marcações nativas
+            Array.from(el.options).forEach(opt => opt.selected = false);
+            // Dispara ativamente o evento para os checkboxes visuais reagirem
+            el.dispatchEvent(new Event('change'));
+          });
 
-        document.getElementById('search-date-start').value = '';
-        document.getElementById('search-date-end').value = '';
-        applySearchFilters();
-      }
+          applySearchFilters();
+        }
 
-      function renderSearchKPIs() {
-        const totalTon = SEARCH_FILTERED.reduce((s, r) => s + Number(r.TONELADAS || 0), 0);
-        document.getElementById('search-kpis').innerHTML = `
+        function renderSearchKPIs() {
+          const totalTon = SEARCH_FILTERED.reduce((s, r) => s + Number(r.TONELADAS || 0), 0);
+          document.getElementById('search-kpis').innerHTML = `
               <div class="kpi-card" style="border-left: 4px solid var(--accent);">
                   <div class="kpi-label">Registros</div>
                   <div class="kpi-value">${SEARCH_FILTERED.length}</div>
@@ -1352,239 +1344,247 @@
                   <div class="kpi-value">${new Set(SEARCH_FILTERED.map(x => x.AGENTE)).size}</div>
               </div>
           `;
-      }
+        }
 
-      function makeChart(id, config) {
-        const ctx = document.getElementById(id).getContext('2d');
-        if (config.type === 'bar' || config.type === 'line') {
-          config.options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } }, y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } } } };
-          if (config.data.datasets.length) {
-            config.data.datasets[0].backgroundColor = config.type === 'line' ? 'transparent' : '#58a6ff';
-            config.data.datasets[0].borderColor = '#58a6ff';
-            config.data.datasets[0].borderWidth = config.type === 'line' ? 2 : 1;
+        function makeChart(id, config) {
+          const ctx = document.getElementById(id).getContext('2d');
+          if (config.type === 'bar' || config.type === 'line') {
+            config.options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } }, y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } } } };
+            if (config.data.datasets.length) {
+              config.data.datasets[0].backgroundColor = config.type === 'line' ? 'transparent' : '#58a6ff';
+              config.data.datasets[0].borderColor = '#58a6ff';
+              config.data.datasets[0].borderWidth = config.type === 'line' ? 2 : 1;
+            }
+          } else if (config.type === 'doughnut') {
+            config.options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e6edf3' } } } };
+            if (config.data.datasets.length) {
+              config.data.datasets[0].backgroundColor = ['#58a6ff', '#3fb950', '#bc8cff', '#d29922', '#f85149', '#8b949e'];
+              config.data.datasets[0].borderColor = '#161b22';
+              config.data.datasets[0].borderWidth = 2;
+            }
           }
-        } else if (config.type === 'doughnut') {
-          config.options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e6edf3' } } } };
-          if (config.data.datasets.length) {
-            config.data.datasets[0].backgroundColor = ['#58a6ff', '#3fb950', '#bc8cff', '#d29922', '#f85149', '#8b949e'];
-            config.data.datasets[0].borderColor = '#161b22';
-            config.data.datasets[0].borderWidth = 2;
+          return new Chart(ctx, config);
+        }
+
+        function renderSearchCharts() {
+          if (chartSearchPort) chartSearchPort.destroy();
+          if (chartSearchProduct) chartSearchProduct.destroy();
+          if (chartSearchTime) chartSearchTime.destroy();
+          if (chartSearchAgent) chartSearchAgent.destroy();
+
+          const portoMap = {}, produtoMap = {}, tempoMap = {}, agenteMap = {};
+
+          SEARCH_FILTERED.forEach(r => {
+            const t = Number(r.TONELADAS || 0);
+            portoMap[r.PORTO || 'N/D'] = (portoMap[r.PORTO || 'N/D'] || 0) + t;
+            produtoMap[r.PRODUTO || 'N/D'] = (produtoMap[r.PRODUTO || 'N/D'] || 0) + t;
+            agenteMap[r.AGENTE] = (agenteMap[r.AGENTE] || 0) + t;
+
+            const m = r.ETB && r.ETB.length >= 7 ? r.ETB.substring(0, 7) : 'N/D';
+            tempoMap[m] = (tempoMap[m] || 0) + t;
+          });
+
+          chartSearchPort = makeChart('search-chart-port', { type: 'bar', data: { labels: Object.keys(portoMap), datasets: [{ label: 'Toneladas', data: Object.values(portoMap) }] } });
+          chartSearchProduct = makeChart('search-chart-product', { type: 'bar', data: { labels: Object.keys(produtoMap), datasets: [{ label: 'Toneladas', data: Object.values(produtoMap) }] } });
+
+          const tempoLabels = Object.keys(tempoMap).sort();
+          chartSearchTime = makeChart('search-chart-time', { type: 'line', data: { labels: tempoLabels, datasets: [{ label: 'Toneladas', data: tempoLabels.map(x => tempoMap[x]) }] } });
+          chartSearchAgent = makeChart('search-chart-agent', { type: 'doughnut', data: { labels: Object.keys(agenteMap), datasets: [{ data: Object.values(agenteMap) }] } });
+        }
+
+        function buildOverlapAnalysis() {
+          const overlapMesesSet = new Set();
+          SEARCH_FILTERED.forEach(r => { if (r.ETB && r.ETB.length >= 7) overlapMesesSet.add(r.ETB.substring(0, 7)); });
+          const overlapMeses = Array.from(overlapMesesSet).sort();
+
+          const overlapAgentesSet = new Set();
+          SEARCH_FILTERED.forEach(r => overlapAgentesSet.add(r.AGENTE));
+          const overlapAgentes = Array.from(overlapAgentesSet).sort();
+
+          const vol_por_agente_mes = {};
+          overlapAgentes.forEach(ag => {
+            vol_por_agente_mes[ag] = {};
+            overlapMeses.forEach(m => vol_por_agente_mes[ag][m] = 0);
+          });
+
+          SEARCH_FILTERED.forEach(r => {
+            const m = (r.ETB && r.ETB.length >= 7) ? r.ETB.substring(0, 7) : null;
+            if (m && vol_por_agente_mes[r.AGENTE]) vol_por_agente_mes[r.AGENTE][m] += Number(r.TONELADAS || 0);
+          });
+
+          const AGENT_COLORS = { 'UNIMAR': '#58a6ff', 'TRANSATLANTICA': '#3fb950', 'WILSON SONS': '#bc8cff', 'WILSON_SONS': '#bc8cff', 'ORION': '#d29922', 'DEFAULT': '#8b949e' };
+          const FMT = (v) => Math.round(v).toLocaleString('pt-BR');
+
+          let html = '<div class="table-wrap"><table><thead><tr><th>Agente</th>';
+          overlapMeses.forEach(m => html += `<th class="right">${m}</th>`);
+          html += '<th class="right">Total Overlap</th></tr></thead><tbody>';
+
+          overlapAgentes.forEach(ag => {
+            const vols = overlapMeses.map(m => vol_por_agente_mes[ag][m] || 0);
+            const total = vols.reduce((a, b) => a + b, 0);
+            const color = AGENT_COLORS[ag] || AGENT_COLORS['DEFAULT'];
+            html += `<tr><td style="color:${color};font-weight:600">${ag.replace('_', ' ')}</td>`;
+            vols.forEach(v => {
+              const bg = v > 0 ? `background:${color}22` : 'color:var(--muted)';
+              html += `<td class="right mono" style="${bg}">${v > 0 ? FMT(v) : '—'}</td>`;
+            });
+            html += `<td class="right mono" style="font-weight:700">${total > 0 ? FMT(total) : '—'}</td></tr>`;
+          });
+          html += '</tbody></table></div>';
+
+          document.getElementById('overlap-analysis').innerHTML = html;
+        }
+
+        function exportSearchExcel() {
+          if (typeof XLSX === 'undefined') return alert('A biblioteca de exportação Excel não foi carregada.');
+          const wb = XLSX.utils.book_new();
+          const agents = [...new Set(SEARCH_FILTERED.map(x => x.AGENTE))];
+
+          agents.forEach(agent => {
+            const rows = SEARCH_FILTERED.filter(r => r.AGENTE === agent);
+            if (!rows.length) return;
+            const ws = XLSX.utils.json_to_sheet(rows);
+            XLSX.utils.book_append_sheet(wb, ws, agent.substring(0, 31));
+          });
+
+          XLSX.writeFile(wb, `Pesquisa_LineUp_${Date.now()}.xlsx`);
+        }
+
+        // INICIALIZADOR: Garanta que isso inicie junto com o dashboard original
+        window.addEventListener('DOMContentLoaded', () => {
+          // Um pequeno delay garante que as variáveis do arquivo JS base existam
+          setTimeout(initSearchTab, 300);
+        });
+
+        document.querySelectorAll('.tabs > .tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('.tabs > .tab, .tab-content').forEach(e => e.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.target).classList.add('active');
+          });
+        });
+
+        document.querySelectorAll('.subtab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('.subtab, .subtab-content').forEach(e => e.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.subtarget).classList.add('active');
+          });
+        });
+
+        renderizarSOP();
+      });
+
+      // Componente de Dropdown com Checkbox
+      function createCheckboxDropdown(selectId, defaultText) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        // Oculta o select nativo e cria a estrutura customizada
+        select.style.display = 'none';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'dropdown-check-list';
+        wrapper.style.minWidth = select.style.minWidth || '160px';
+
+        const anchor = document.createElement('div');
+        anchor.className = 'anchor';
+
+        const anchorText = document.createElement('span');
+        anchorText.textContent = defaultText;
+
+        const anchorIcon = document.createElement('span');
+        anchorIcon.innerHTML = '▼';
+        anchorIcon.style.fontSize = '10px';
+        anchorIcon.style.color = 'var(--muted)';
+
+        anchor.appendChild(anchorText);
+        anchor.appendChild(anchorIcon);
+
+        const list = document.createElement('ul');
+        list.className = 'items';
+
+        wrapper.appendChild(anchor);
+        wrapper.appendChild(list);
+
+        select.parentNode.insertBefore(wrapper, select.nextSibling);
+
+        function updateAnchorText() {
+          const selectedOptions = Array.from(select.options).filter(o => o.selected);
+          if (selectedOptions.length === 0 || selectedOptions.length === select.options.length) {
+            anchorText.textContent = defaultText;
+          } else if (selectedOptions.length === 1) {
+            anchorText.textContent = selectedOptions[0].text;
+          } else {
+            anchorText.textContent = `${selectedOptions.length} selecionados`;
           }
         }
-        return new Chart(ctx, config);
-      }
 
-      function renderSearchCharts() {
-        if (chartSearchPort) chartSearchPort.destroy();
-        if (chartSearchProduct) chartSearchProduct.destroy();
-        if (chartSearchTime) chartSearchTime.destroy();
-        if (chartSearchAgent) chartSearchAgent.destroy();
+        function updateList() {
+          list.innerHTML = '';
+          Array.from(select.options).forEach(opt => {
+            const li = document.createElement('li');
+            const label = document.createElement('label');
 
-        const portoMap = {}, produtoMap = {}, tempoMap = {}, agenteMap = {};
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = opt.value;
+            checkbox.checked = opt.selected;
 
-        SEARCH_FILTERED.forEach(r => {
-          const t = Number(r.TONELADAS || 0);
-          portoMap[r.PORTO || 'N/D'] = (portoMap[r.PORTO || 'N/D'] || 0) + t;
-          produtoMap[r.PRODUTO || 'N/D'] = (produtoMap[r.PRODUTO || 'N/D'] || 0) + t;
-          agenteMap[r.AGENTE] = (agenteMap[r.AGENTE] || 0) + t;
+            checkbox.addEventListener('change', (e) => {
+              opt.selected = e.target.checked;
+              // Dispara o evento nativo para que os filtros do dashboard continuem operando normalmente
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+              updateAnchorText();
+            });
 
-          const m = r.ETB && r.ETB.length >= 7 ? r.ETB.substring(0, 7) : 'N/D';
-          tempoMap[m] = (tempoMap[m] || 0) + t;
-        });
-
-        chartSearchPort = makeChart('search-chart-port', { type: 'bar', data: { labels: Object.keys(portoMap), datasets: [{ label: 'Toneladas', data: Object.values(portoMap) }] } });
-        chartSearchProduct = makeChart('search-chart-product', { type: 'bar', data: { labels: Object.keys(produtoMap), datasets: [{ label: 'Toneladas', data: Object.values(produtoMap) }] } });
-
-        const tempoLabels = Object.keys(tempoMap).sort();
-        chartSearchTime = makeChart('search-chart-time', { type: 'line', data: { labels: tempoLabels, datasets: [{ label: 'Toneladas', data: tempoLabels.map(x => tempoMap[x]) }] } });
-        chartSearchAgent = makeChart('search-chart-agent', { type: 'doughnut', data: { labels: Object.keys(agenteMap), datasets: [{ data: Object.values(agenteMap) }] } });
-      }
-
-      function buildOverlapAnalysis() {
-        const overlapMesesSet = new Set();
-        SEARCH_FILTERED.forEach(r => { if (r.ETB && r.ETB.length >= 7) overlapMesesSet.add(r.ETB.substring(0, 7)); });
-        const overlapMeses = Array.from(overlapMesesSet).sort();
-
-        const overlapAgentesSet = new Set();
-        SEARCH_FILTERED.forEach(r => overlapAgentesSet.add(r.AGENTE));
-        const overlapAgentes = Array.from(overlapAgentesSet).sort();
-
-        const vol_por_agente_mes = {};
-        overlapAgentes.forEach(ag => {
-          vol_por_agente_mes[ag] = {};
-          overlapMeses.forEach(m => vol_por_agente_mes[ag][m] = 0);
-        });
-
-        SEARCH_FILTERED.forEach(r => {
-          const m = (r.ETB && r.ETB.length >= 7) ? r.ETB.substring(0, 7) : null;
-          if (m && vol_por_agente_mes[r.AGENTE]) vol_por_agente_mes[r.AGENTE][m] += Number(r.TONELADAS || 0);
-        });
-
-        const AGENT_COLORS = { 'UNIMAR': '#58a6ff', 'TRANSATLANTICA': '#3fb950', 'WILSON SONS': '#bc8cff', 'WILSON_SONS': '#bc8cff', 'ORION': '#d29922', 'DEFAULT': '#8b949e' };
-        const FMT = (v) => Math.round(v).toLocaleString('pt-BR');
-
-        let html = '<div class="table-wrap"><table><thead><tr><th>Agente</th>';
-        overlapMeses.forEach(m => html += `<th class="right">${m}</th>`);
-        html += '<th class="right">Total Overlap</th></tr></thead><tbody>';
-
-        overlapAgentes.forEach(ag => {
-          const vols = overlapMeses.map(m => vol_por_agente_mes[ag][m] || 0);
-          const total = vols.reduce((a, b) => a + b, 0);
-          const color = AGENT_COLORS[ag] || AGENT_COLORS['DEFAULT'];
-          html += `<tr><td style="color:${color};font-weight:600">${ag.replace('_', ' ')}</td>`;
-          vols.forEach(v => {
-            const bg = v > 0 ? `background:${color}22` : 'color:var(--muted)';
-            html += `<td class="right mono" style="${bg}">${v > 0 ? FMT(v) : '—'}</td>`;
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(opt.text));
+            li.appendChild(label);
+            list.appendChild(li);
           });
-          html += `<td class="right mono" style="font-weight:700">${total > 0 ? FMT(total) : '—'}</td></tr>`;
-        });
-        html += '</tbody></table></div>';
+          updateAnchorText();
+        }
 
-        document.getElementById('overlap-analysis').innerHTML = html;
-      }
-
-      function exportSearchExcel() {
-        if (typeof XLSX === 'undefined') return alert('A biblioteca de exportação Excel não foi carregada.');
-        const wb = XLSX.utils.book_new();
-        const agents = [...new Set(SEARCH_FILTERED.map(x => x.AGENTE))];
-
-        agents.forEach(agent => {
-          const rows = SEARCH_FILTERED.filter(r => r.AGENTE === agent);
-          if (!rows.length) return;
-          const ws = XLSX.utils.json_to_sheet(rows);
-          XLSX.utils.book_append_sheet(wb, ws, agent.substring(0, 31));
+        // Controle de abertura do menu
+        anchor.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isVisible = list.style.display === 'block';
+          document.querySelectorAll('.dropdown-check-list .items').forEach(el => el.style.display = 'none');
+          if (!isVisible) list.style.display = 'block';
         });
 
-        XLSX.writeFile(wb, `Pesquisa_LineUp_${Date.now()}.xlsx`);
+        // Fecha ao clicar fora
+        document.addEventListener('click', (e) => {
+          if (!wrapper.contains(e.target)) list.style.display = 'none';
+        });
+
+        // Sincroniza sempre que as opções originais (DOM) sofrerem alterações
+        const observer = new MutationObserver(updateList);
+        observer.observe(select, { childList: true });
+
+        // Garante que a interface atualize se o select mudar programaticamente
+        select.addEventListener('change', () => {
+          const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+          Array.from(select.options).forEach((opt, index) => {
+            if (checkboxes[index] && checkboxes[index].checked !== opt.selected) {
+              checkboxes[index].checked = opt.selected;
+            }
+          });
+          updateAnchorText();
+        });
+
+        updateList();
       }
 
-      // INICIALIZADOR: Garanta que isso inicie junto com o dashboard original
+      // Inicializa os dropdowns customizados
       window.addEventListener('DOMContentLoaded', () => {
-        // Um pequeno delay garante que as variáveis do arquivo JS base existam
-        setTimeout(initSearchTab, 300);
+        createCheckboxDropdown('search-product', 'Todos os Produtos');
+        createCheckboxDropdown('search-port', 'Todos os Portos');
+        createCheckboxDropdown('search-agent', 'Todos os Agentes');
       });
 
-      document.querySelectorAll('.tabs > .tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.tabs > .tab, .tab-content').forEach(e => e.classList.remove('active'));
-          tab.classList.add('active');
-          document.getElementById(tab.dataset.target).classList.add('active');
-        });
-      });
-
-      document.querySelectorAll('.subtab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.subtab, .subtab-content').forEach(e => e.classList.remove('active'));
-          tab.classList.add('active');
-          document.getElementById(tab.dataset.subtarget).classList.add('active');
-        });
-      });
-
-      renderizarSOP();
-    });
-
-    // Componente de Dropdown com Checkbox
-    function createCheckboxDropdown(selectId, defaultText) {
-      const select = document.getElementById(selectId);
-      if (!select) return;
-
-      // Oculta o select nativo e cria a estrutura customizada
-      select.style.display = 'none';
-
-      const wrapper = document.createElement('div');
-      wrapper.className = 'dropdown-check-list';
-      wrapper.style.minWidth = select.style.minWidth || '160px';
-
-      const anchor = document.createElement('div');
-      anchor.className = 'anchor';
-
-      const anchorText = document.createElement('span');
-      anchorText.textContent = defaultText;
-
-      const anchorIcon = document.createElement('span');
-      anchorIcon.innerHTML = '▼';
-      anchorIcon.style.fontSize = '10px';
-      anchorIcon.style.color = 'var(--muted)';
-
-      anchor.appendChild(anchorText);
-      anchor.appendChild(anchorIcon);
-
-      const list = document.createElement('ul');
-      list.className = 'items';
-
-      wrapper.appendChild(anchor);
-      wrapper.appendChild(list);
-
-      select.parentNode.insertBefore(wrapper, select.nextSibling);
-
-      function updateAnchorText() {
-        const selectedOptions = Array.from(select.options).filter(o => o.selected);
-        if (selectedOptions.length === 0 || selectedOptions.length === select.options.length) {
-          anchorText.textContent = defaultText;
-        } else if (selectedOptions.length === 1) {
-          anchorText.textContent = selectedOptions[0].text;
-        } else {
-          anchorText.textContent = `${selectedOptions.length} selecionados`;
-        }
-      }
-
-      function updateList() {
-        list.innerHTML = '';
-        Array.from(select.options).forEach(opt => {
-          const li = document.createElement('li');
-          const label = document.createElement('label');
-
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.value = opt.value;
-          checkbox.checked = opt.selected;
-
-          checkbox.addEventListener('change', (e) => {
-            opt.selected = e.target.checked;
-            // Dispara o evento nativo para que os filtros do dashboard continuem operando normalmente
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-            updateAnchorText();
-          });
-
-          label.appendChild(checkbox);
-          label.appendChild(document.createTextNode(opt.text));
-          li.appendChild(label);
-          list.appendChild(li);
-        });
-        updateAnchorText();
-      }
-
-      // Controle de abertura do menu
-      anchor.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isVisible = list.style.display === 'block';
-        document.querySelectorAll('.dropdown-check-list .items').forEach(el => el.style.display = 'none');
-        if (!isVisible) list.style.display = 'block';
-      });
-
-      // Fecha ao clicar fora
-      document.addEventListener('click', (e) => {
-        if (!wrapper.contains(e.target)) list.style.display = 'none';
-      });
-
-      // Sincroniza sempre que as opções originais (DOM) sofrerem alterações
-      const observer = new MutationObserver(updateList);
-      observer.observe(select, { childList: true });
-
-      updateList();
-    }
-
-    // Inicializa os dropdowns customizados
-    window.addEventListener('DOMContentLoaded', () => {
-      createCheckboxDropdown('search-product', 'Todos os Produtos');
-      createCheckboxDropdown('search-port', 'Todos os Portos');
-      createCheckboxDropdown('search-agent', 'Todos os Agentes');
-    });
-
-  </script>
+    </script>
 </body>
 
 </html>
-
-
-<!-- Arrumar a página de Pesquisa Avançada -->
