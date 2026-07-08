@@ -429,6 +429,100 @@
       background: var(--border2);
       border-radius: 3px;
     }
+
+    /* Custom Dropdown Múltiplo - Design Minimalista */
+    .dropdown-check-list {
+      display: block;
+      position: relative;
+      font-family: var(--sans);
+    }
+
+    .dropdown-check-list .anchor {
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 500;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      user-select: none;
+    }
+
+    .dropdown-check-list .anchor:hover {
+      border-color: var(--muted);
+    }
+
+    .dropdown-check-list .items {
+      padding: 8px 0;
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      max-height: 240px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      list-style: none;
+    }
+
+    .dropdown-check-list .items li {
+      padding: 6px 12px;
+      font-size: 12px;
+      transition: background 0.15s ease;
+    }
+
+    .dropdown-check-list .items li:hover {
+      background: var(--surface);
+    }
+
+    .dropdown-check-list .items li label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      width: 100%;
+      color: var(--text);
+      margin: 0;
+    }
+
+    /* Checkbox customizado (Premium & Monocromático) */
+    .dropdown-check-list .items input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--muted);
+      border-radius: 3px;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .dropdown-check-list .items input[type="checkbox"]:checked {
+      background: var(--text);
+      border-color: var(--text);
+    }
+
+    .dropdown-check-list .items input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--bg);
+      font-size: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -602,19 +696,16 @@
             style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
         </div>
         <div style="display:flex; flex-direction:column;">
-          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Produto <span style="text-transform:none; font-weight:400;">(Ctrl/Cmd+clique p/ múltiplos)</span></label>
-          <select id="search-product" multiple size="4"
-            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text); min-width: 160px;"></select>
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Produto</label>
+          <select id="search-product" multiple style="min-width: 160px;"></select>
         </div>
         <div style="display:flex; flex-direction:column;">
-          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Porto <span style="text-transform:none; font-weight:400;">(Ctrl/Cmd+clique p/ múltiplos)</span></label>
-          <select id="search-port" multiple size="4"
-            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text); min-width: 160px;"></select>
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Porto</label>
+          <select id="search-port" multiple style="min-width: 160px;"></select>
         </div>
         <div style="display:flex; flex-direction:column;">
-          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Agente (Fonte) <span style="text-transform:none; font-weight:400;">(Ctrl/Cmd+clique p/ múltiplos)</span></label>
-          <select id="search-agent" multiple size="4"
-            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text); min-width: 160px;"></select>
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Agente (Fonte)</label>
+          <select id="search-agent" multiple style="min-width: 160px;"></select>
         </div>
         <div style="display:flex; align-items:flex-end; gap:8px; flex: 1;">
           <button onclick="applySearchFilters()"
@@ -1132,6 +1223,10 @@
           };
         });
 
+        window.applySearchFilters = applySearchFilters;
+        window.resetSearchFilters = resetSearchFilters;
+        window.exportSearchExcel = exportSearchExcel;
+
         const product = document.getElementById('search-product');
         const port = document.getElementById('search-port');
         const agent = document.getElementById('search-agent');
@@ -1309,7 +1404,7 @@
 
       // INICIALIZADOR: Garanta que isso inicie junto com o dashboard original
       window.addEventListener('DOMContentLoaded', () => {
-        // Um pequeno delay garante que as variáveis do seu arquivo JS base existam
+        // Um pequeno delay garante que as variáveis do arquivo JS base existam
         setTimeout(initSearchTab, 300);
       });
 
@@ -1331,6 +1426,105 @@
 
       renderizarSOP();
     });
+
+    // Componente de Dropdown com Checkbox
+    function createCheckboxDropdown(selectId, defaultText) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+
+      // Oculta o select nativo e cria a estrutura customizada
+      select.style.display = 'none';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'dropdown-check-list';
+      wrapper.style.minWidth = select.style.minWidth || '160px';
+
+      const anchor = document.createElement('div');
+      anchor.className = 'anchor';
+
+      const anchorText = document.createElement('span');
+      anchorText.textContent = defaultText;
+
+      const anchorIcon = document.createElement('span');
+      anchorIcon.innerHTML = '▼';
+      anchorIcon.style.fontSize = '10px';
+      anchorIcon.style.color = 'var(--muted)';
+
+      anchor.appendChild(anchorText);
+      anchor.appendChild(anchorIcon);
+
+      const list = document.createElement('ul');
+      list.className = 'items';
+
+      wrapper.appendChild(anchor);
+      wrapper.appendChild(list);
+
+      select.parentNode.insertBefore(wrapper, select.nextSibling);
+
+      function updateAnchorText() {
+        const selectedOptions = Array.from(select.options).filter(o => o.selected);
+        if (selectedOptions.length === 0 || selectedOptions.length === select.options.length) {
+          anchorText.textContent = defaultText;
+        } else if (selectedOptions.length === 1) {
+          anchorText.textContent = selectedOptions[0].text;
+        } else {
+          anchorText.textContent = `${selectedOptions.length} selecionados`;
+        }
+      }
+
+      function updateList() {
+        list.innerHTML = '';
+        Array.from(select.options).forEach(opt => {
+          const li = document.createElement('li');
+          const label = document.createElement('label');
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = opt.value;
+          checkbox.checked = opt.selected;
+
+          checkbox.addEventListener('change', (e) => {
+            opt.selected = e.target.checked;
+            // Dispara o evento nativo para que os filtros do dashboard continuem operando normalmente
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            updateAnchorText();
+          });
+
+          label.appendChild(checkbox);
+          label.appendChild(document.createTextNode(opt.text));
+          li.appendChild(label);
+          list.appendChild(li);
+        });
+        updateAnchorText();
+      }
+
+      // Controle de abertura do menu
+      anchor.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = list.style.display === 'block';
+        document.querySelectorAll('.dropdown-check-list .items').forEach(el => el.style.display = 'none');
+        if (!isVisible) list.style.display = 'block';
+      });
+
+      // Fecha ao clicar fora
+      document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target)) list.style.display = 'none';
+      });
+
+      // Sincroniza sempre que as opções originais (DOM) sofrerem alterações
+      const observer = new MutationObserver(updateList);
+      observer.observe(select, { childList: true });
+
+      updateList();
+    }
+
+    // Inicializa os dropdowns customizados
+    window.addEventListener('DOMContentLoaded', () => {
+      createCheckboxDropdown('search-product', 'Todos os Produtos');
+      createCheckboxDropdown('search-port', 'Todos os Portos');
+      createCheckboxDropdown('search-agent', 'Todos os Agentes');
+    });
+
   </script>
 </body>
 
