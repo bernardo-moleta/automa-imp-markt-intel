@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Análise Comparativa de Escalação</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="dados_dashboard.js"></script> 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="dados_dashboard.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 
@@ -35,81 +37,378 @@
       --sop-header-bg: var(--surface);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
 
     /* ── HEADER ── */
-    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-    .brand h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; text-transform: none; margin-bottom: 4px; }
-    .brand p { font-size: 11px; color: var(--muted); font-family: var(--mono); text-transform: none; letter-spacing: normal; }
-    .meta-info { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; text-transform: none; letter-spacing: normal; }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      text-transform: none;
+      margin-bottom: 4px;
+    }
+
+    .brand p {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .meta-info {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+      text-transform: none;
+      letter-spacing: normal;
+    }
 
     /* ── LAYOUT ── */
-    main { padding: 28px 32px; max-width: 1700px; margin: 0 auto; }
+    main {
+      padding: 28px 32px;
+      max-width: 1700px;
+      margin: 0 auto;
+    }
 
     /* ── KPI STRIP ── */
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; flex-direction: column; justify-content: space-between; transition: border-color .15s; }
-    .kpi-card:hover { border-color: var(--border2); transform: none; }
-    .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; font-weight: 600; }
-    .kpi-value { font-size: 26px; font-weight: 700; font-family: var(--mono); line-height: 1; letter-spacing: normal; color: var(--accent); }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color .15s;
+    }
+
+    .kpi-card:hover {
+      border-color: var(--border2);
+      transform: none;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 700;
+      font-family: var(--mono);
+      line-height: 1;
+      letter-spacing: normal;
+      color: var(--accent);
+    }
 
     /* ── CHART CARDS ── */
-    .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px; }
-    .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; height: 420px; position: relative; display: flex; flex-direction: column; }
-    .chart-wrapper { flex: 1; position: relative; min-height: 0; }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .chart-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      height: 420px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chart-wrapper {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
 
     /* ── NAV TABS ── */
-    .tabs { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 12px; display: flex; gap: 0; overflow-x: auto; margin-bottom: 28px; }
-    .tab { padding: 12px 18px; cursor: pointer; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: normal; color: var(--muted); border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; white-space: nowrap; }
-    .tab:hover { color: var(--text); }
-    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-content { display: none; animation: fadeIn 0.4s ease; }
-    .tab-content.active { display: block; }
+    .tabs {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0 12px;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      margin-bottom: 28px;
+    }
 
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .tab {
+      padding: 12px 18px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
 
-    .section-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; text-transform: none; letter-spacing: normal; }
-    .section-title::before { content: ''; display: block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+    .tab:hover {
+      color: var(--text);
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .section-title::before {
+      content: '';
+      display: block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
 
     /* ── TABLE ── */
-    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 28px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th { background: rgba(255, 255, 255, .04); border-bottom: 1px solid var(--border2); text-align: left; padding: 10px 14px; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: .4px; color: var(--muted); white-space: nowrap; }
-    td { border-bottom: 1px solid var(--border); padding: 9px 14px; vertical-align: middle; }
-    tr:hover td { background: rgba(255, 255, 255, .03); }
-    tfoot td { background: rgba(255, 255, 255, .05); border-top: 1px solid var(--border2); border-bottom: none; font-weight: 600; color: var(--text); }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 28px;
+    }
 
-    .mono { font-family: var(--mono); }
-    .right { text-align: right; }
-    .discrepancy-badge { display: inline-block; padding: 2px 8px; font-family: var(--mono); font-size: 11px; border-radius: 4px; border: 1px solid var(--border2); background: rgba(255, 255, 255, .06); color: var(--text); }
-    .discrepancy-negative .discrepancy-badge { background: var(--danger); border-color: var(--danger); color: #0d1117; }
-    .percent-badge { font-family: var(--mono); font-size: 12px; font-weight: 600; }
-    .percent-red { color: var(--danger); }
-    .percent-green { color: var(--accent2); }
-    .percent-neutral { color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
 
-    .sop-diff-positive { color: var(--accent2); font-weight: 600; }
-    .sop-diff-negative { color: var(--danger); font-weight: 600; }
-    .sop-diff-neutral { color: var(--muted); }
-    #table-sop th { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border2); text-align: center; }
-    #table-sop td { border-right: 1px solid var(--border); text-align: right; font-family: var(--mono); }
-    #table-sop td:first-child, #table-sop th:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); border-right: 1px solid var(--border2); font-family: var(--sans); font-weight: 600; z-index: 10; }
-    .sop-total-row td { background: var(--border2) !important; color: var(--text); font-weight: 600; }
-    .border-thick { border-left: 1px solid var(--border2) !important; }
-    .sub-col-siacesp { color: var(--muted); font-size: 12px; }
+    th {
+      background: rgba(255, 255, 255, .04);
+      border-bottom: 1px solid var(--border2);
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: .4px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 9px 14px;
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, .03);
+    }
+
+    tfoot td {
+      background: rgba(255, 255, 255, .05);
+      border-top: 1px solid var(--border2);
+      border-bottom: none;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .mono {
+      font-family: var(--mono);
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .discrepancy-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      background: rgba(255, 255, 255, .06);
+      color: var(--text);
+    }
+
+    .discrepancy-negative .discrepancy-badge {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #0d1117;
+    }
+
+    .percent-badge {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .percent-red {
+      color: var(--danger);
+    }
+
+    .percent-green {
+      color: var(--accent2);
+    }
+
+    .percent-neutral {
+      color: var(--muted);
+    }
+
+    .sop-diff-positive {
+      color: var(--accent2);
+      font-weight: 600;
+    }
+
+    .sop-diff-negative {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .sop-diff-neutral {
+      color: var(--muted);
+    }
+
+    #table-sop th {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border2);
+      text-align: center;
+    }
+
+    #table-sop td {
+      border-right: 1px solid var(--border);
+      text-align: right;
+      font-family: var(--mono);
+    }
+
+    #table-sop td:first-child,
+    #table-sop th:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border2);
+      font-family: var(--sans);
+      font-weight: 600;
+      z-index: 10;
+    }
+
+    .sop-total-row td {
+      background: var(--border2) !important;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .border-thick {
+      border-left: 1px solid var(--border2) !important;
+    }
+
+    .sub-col-siacesp {
+      color: var(--muted);
+      font-size: 12px;
+    }
 
     /* ── SCROLLBAR ── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px;
+    }
   </style>
 </head>
+
 <body>
   <header>
     <div class="brand" style="display:flex; align-items:center; gap:12px;">
-      <div style="width:36px; height:36px; background:linear-gradient(135deg, var(--accent), var(--purple)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">⚓</div>
+      <div
+        style="width:36px; height:36px; background:linear-gradient(135deg, var(--accent), var(--purple)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
+        ⚓</div>
       <div>
         <h1>Dashboard Confiabilidade</h1>
         <p>Análise Comparativa Automática / Line Up vs SIACESP</p>
@@ -125,19 +424,27 @@
     <div class="tabs">
       <div class="tab active" data-target="sop">S&OP Semanal Multi-Fontes</div>
       <div class="tab" data-target="resumo">Resumo Consolidado</div>
+
       <div class="tab" data-target="unimar">Unimar</div>
       <div class="tab" data-target="transatlantica">Transatlântica</div>
       <div class="tab" data-target="wilson">Wilson Sons</div>
       <div class="tab" data-target="orion">Orion</div>
+
+      <div class="tab" data-target="search">Pesquisa Avançada</div>
     </div>
 
     <div id="sop" class="tab-content active">
       <div class="section-title">Visão S&OP Semanal Multi-Fontes</div>
-      <p style="font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 24px; text-transform: uppercase;" id="sop-subtitle">Calculando período base...</p>
-      <div class="kpi-grid" id="sop-kpi-container" style="margin-bottom: 40px; grid-template-columns: repeat(4, 1fr);"></div>
+      <p style="font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 24px; text-transform: uppercase;"
+        id="sop-subtitle">Calculando período base...</p>
+      <div class="kpi-grid" id="sop-kpi-container" style="margin-bottom: 40px; grid-template-columns: repeat(4, 1fr);">
+      </div>
       <div class="table-wrap">
         <table id="table-sop">
-          <thead><tr id="sop-thead-row1"></tr><tr id="sop-thead-row2"></tr></thead>
+          <thead>
+            <tr id="sop-thead-row1"></tr>
+            <tr id="sop-thead-row2"></tr>
+          </thead>
           <tbody id="sop-tbody"></tbody>
         </table>
       </div>
@@ -145,21 +452,205 @@
 
     <div id="resumo" class="tab-content">
       <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">Agente Mais Confiável</div><div class="kpi-value" id="kpi-best-agent" style="text-transform: uppercase;">-</div><div class="kpi-label" id="kpi-best-agent-label" style="margin-top:16px; margin-bottom:0;">-</div></div>
-        <div class="kpi-card"><div class="kpi-label">Vol. Total Base Siacesp</div><div class="kpi-value" id="kpi-vol-total">-</div><div class="kpi-label" style="margin-top:16px; margin-bottom:0;">Toneladas (MT)</div></div>
-        <div class="kpi-card"><div class="kpi-label">Fontes Line Up Analisadas</div><div class="kpi-value" id="kpi-fontes-count">-</div><div class="kpi-label" id="kpi-fontes-names" style="margin-top:16px; margin-bottom:0;">-</div></div>
+        <div class="kpi-card">
+          <div class="kpi-label">Agente Mais Confiável</div>
+          <div class="kpi-value" id="kpi-best-agent" style="text-transform: uppercase;">-</div>
+          <div class="kpi-label" id="kpi-best-agent-label" style="margin-top:16px; margin-bottom:0;">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Vol. Total Base Siacesp</div>
+          <div class="kpi-value" id="kpi-vol-total">-</div>
+          <div class="kpi-label" style="margin-top:16px; margin-bottom:0;">Toneladas (MT)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Fontes Line Up Analisadas</div>
+          <div class="kpi-value" id="kpi-fontes-count">-</div>
+          <div class="kpi-label" id="kpi-fontes-names" style="margin-top:16px; margin-bottom:0;">-</div>
+        </div>
       </div>
       <div class="charts-grid">
-        <div class="chart-container"><div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas (MT)</div><div class="chart-wrapper"><canvas id="discChart"></canvas></div></div>
-        <div class="chart-container"><div class="kpi-label" style="margin-bottom: 20px;">Ranking de Confiabilidade Geral</div><div class="chart-wrapper"><canvas id="rankingChart"></canvas></div></div>
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas (MT)</div>
+          <div class="chart-wrapper"><canvas id="discChart"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Ranking de Confiabilidade Geral</div>
+          <div class="chart-wrapper"><canvas id="rankingChart"></canvas></div>
+        </div>
       </div>
       <h2 class="section-title">Top Discrepâncias Gerais</h2>
-      <div class="table-wrap"><table id="table-resumo"><thead><tr><th>Fonte Line Up</th><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+      <div class="table-wrap">
+        <table id="table-resumo">
+          <thead>
+            <tr>
+              <th>Fonte Line Up</th>
+              <th>Produto</th>
+              <th class="right">Vol. Line Up</th>
+              <th class="right">Vol. SIACESP</th>
+              <th class="right">Discrepância</th>
+              <th class="right">% Disc.</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
     </div>
-    <div id="unimar" class="tab-content"><h2 class="section-title">Comparação: UNIMAR vs SIACESP</h2><div class="table-wrap"><table id="table-unimar"><thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>
-    <div id="transatlantica" class="tab-content"><h2 class="section-title">Comparação: TRANSATLÂNTICA vs SIACESP</h2><div class="table-wrap"><table id="table-transatlantica"><thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>
-    <div id="wilson" class="tab-content"><h2 class="section-title">Comparação: WILSON SONS vs SIACESP</h2><div class="table-wrap"><table id="table-wilson"><thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>
-    <div id="orion" class="tab-content"><h2 class="section-title">Comparação: ORION vs SIACESP</h2><div class="table-wrap"><table id="table-orion"><thead><tr><th>Produto</th><th class="right">Vol. Line Up</th><th class="right">Vol. SIACESP</th><th class="right">Discrepância</th><th class="right">% Disc.</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>
+    <div id="unimar" class="tab-content">
+      <h2 class="section-title">Comparação: UNIMAR vs SIACESP</h2>
+      <div class="table-wrap">
+        <table id="table-unimar">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="right">Vol. Line Up</th>
+              <th class="right">Vol. SIACESP</th>
+              <th class="right">Discrepância</th>
+              <th class="right">% Disc.</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+    <div id="transatlantica" class="tab-content">
+      <h2 class="section-title">Comparação: TRANSATLÂNTICA vs SIACESP</h2>
+      <div class="table-wrap">
+        <table id="table-transatlantica">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="right">Vol. Line Up</th>
+              <th class="right">Vol. SIACESP</th>
+              <th class="right">Discrepância</th>
+              <th class="right">% Disc.</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+    <div id="wilson" class="tab-content">
+      <h2 class="section-title">Comparação: WILSON SONS vs SIACESP</h2>
+      <div class="table-wrap">
+        <table id="table-wilson">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="right">Vol. Line Up</th>
+              <th class="right">Vol. SIACESP</th>
+              <th class="right">Discrepância</th>
+              <th class="right">% Disc.</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+    <div id="orion" class="tab-content">
+      <h2 class="section-title">Comparação: ORION vs SIACESP</h2>
+      <div class="table-wrap">
+        <table id="table-orion">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th class="right">Vol. Line Up</th>
+              <th class="right">Vol. SIACESP</th>
+              <th class="right">Discrepância</th>
+              <th class="right">% Disc.</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div id="search" class="tab-content">
+      <div class="section-title">Pesquisa Avançada e Análise Multi-Agentes</div>
+
+      <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+        <div style="display:flex; flex-direction:column;">
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Data Início</label>
+          <input type="date" id="search-date-start"
+            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+        </div>
+        <div style="display:flex; flex-direction:column;">
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Data Fim</label>
+          <input type="date" id="search-date-end"
+            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+        </div>
+        <div style="display:flex; flex-direction:column;">
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Produto</label>
+          <select id="search-product"
+            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"></select>
+        </div>
+        <div style="display:flex; flex-direction:column;">
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Porto</label>
+          <select id="search-port"
+            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"></select>
+        </div>
+        <div style="display:flex; flex-direction:column;">
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Agente (Fonte)</label>
+          <select id="search-agent"
+            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"></select>
+        </div>
+        <div style="display:flex; align-items:flex-end; gap:8px; flex: 1;">
+          <button onclick="applySearchFilters()"
+            style="padding: 8px 16px; height: 38px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Filtrar</button>
+          <button onclick="resetSearchFilters()"
+            style="padding: 8px 16px; height: 38px; background: var(--border2); color: #fff; border: none; border-radius: 4px; cursor: pointer;">Limpar</button>
+          <button onclick="exportSearchExcel()"
+            style="padding: 8px 16px; height: 38px; background: var(--accent-green); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; margin-left: auto;">Exportar
+            Excel</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="search-kpis"></div>
+
+      <div class="section-title">Análise de Overlap Temporal</div>
+      <div id="overlap-analysis" style="margin-bottom: 28px;"></div>
+
+      <div class="charts-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 24px;">
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Toneladas por Porto</div>
+          <div class="chart-wrapper"><canvas id="search-chart-port"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Toneladas por Produto</div>
+          <div class="chart-wrapper"><canvas id="search-chart-product"></canvas></div>
+        </div>
+      </div>
+      <div class="charts-grid" style="grid-template-columns: 2fr 1fr; margin-bottom: 24px;">
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Evolução (Mês a Mês)</div>
+          <div class="chart-wrapper"><canvas id="search-chart-time"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Participação por Agente</div>
+          <div class="chart-wrapper"><canvas id="search-chart-agent"></canvas></div>
+        </div>
+      </div>
+
+      <div class="section-title">Registros Detalhados (Top 500)</div>
+      <div class="table-wrap">
+        <table id="search-table">
+          <thead>
+            <tr>
+              <th>ETB</th>
+              <th>AGENTE</th>
+              <th>PORTO</th>
+              <th>PRODUTO</th>
+              <th class="right">TONELADAS</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -194,42 +685,42 @@
         const rawSiacesp = dashboardData.siacesp_raw || [];
         const rawLineup = dashboardData.lineup_raw || [];
 
-        if(rawSiacesp.length === 0 || rawLineup.length === 0) {
-            document.getElementById('sop-tbody').innerHTML = `<tr><td colspan="18" style="text-align:center; padding: 40px;">⚠️ Dados granulares não encontrados.</td></tr>`;
-            return;
+        if (rawSiacesp.length === 0 || rawLineup.length === 0) {
+          document.getElementById('sop-tbody').innerHTML = `<tr><td colspan="18" style="text-align:center; padding: 40px;">⚠️ Dados granulares não encontrados.</td></tr>`;
+          return;
         }
 
         const getSiacespDate = (row) => row["Z_PERÍODO"] || row["PERÍODO"] || row.data_operacao || row.Data;
-        const getSiacespVol  = (row) => parseFloat(row["VOLUME"] || row.volume || row.Volume) || 0;
+        const getSiacespVol = (row) => parseFloat(row["VOLUME"] || row.volume || row.Volume) || 0;
         const getSiacespProd = (row) => row["Y_PRODUTO PARA"] || row.PRODUTO || row.produto || row.Produto;
 
-        const getFonte         = (row) => row["FONTE_DADOS"] || "DESCONHECIDA";
+        const getFonte = (row) => row["FONTE_DADOS"] || "DESCONHECIDA";
         const getLineupPosDate = (row) => row["DATA POSIÇÃO"] || row["DATA_POSIÇÃO"] || row["Z_DATA_POSIÇÃO"] || row.data_posicao || row.Data;
-        const getLineupEtb     = (row) => row["ETB"] || row["Z_ETB"] || row.etb;
-        const getLineupVol     = (row) => parseFloat(row["Qtty"] || row["QUANTITY"] || row["WEIGHT"] || row["TONNAGE"] || row["VOLUME"] || row.volume || row.Volume) || 0;
-        const getLineupProd    = (row) => row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.PRODUTO || row.produto || row.Produto;
+        const getLineupEtb = (row) => row["ETB"] || row["Z_ETB"] || row.etb;
+        const getLineupVol = (row) => parseFloat(row["Qtty"] || row["QUANTITY"] || row["WEIGHT"] || row["TONNAGE"] || row["VOLUME"] || row.volume || row.Volume) || 0;
+        const getLineupProd = (row) => row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.PRODUTO || row.produto || row.Produto;
 
         // Normalização robusta de Data para o padrão ISO (YYYY-MM-DD)
         const padronizarDataISO = (dStr) => {
-            if(!dStr) return null;
-            let str = String(dStr).split(' ')[0].split('T')[0];
-            if (str.includes('/')) {
-                let parts = str.split('/');
-                if (parts.length === 3 && parts[2].length === 4) {
-                    let m = parts[1].padStart(2, '0');
-                    let d = parts[0].padStart(2, '0');
-                    if (parseInt(m) > 12) { m = parts[0].padStart(2, '0'); d = parts[1].padStart(2, '0'); }
-                    return `${parts[2]}-${m}-${d}`;
-                }
+          if (!dStr) return null;
+          let str = String(dStr).split(' ')[0].split('T')[0];
+          if (str.includes('/')) {
+            let parts = str.split('/');
+            if (parts.length === 3 && parts[2].length === 4) {
+              let m = parts[1].padStart(2, '0');
+              let d = parts[0].padStart(2, '0');
+              if (parseInt(m) > 12) { m = parts[0].padStart(2, '0'); d = parts[1].padStart(2, '0'); }
+              return `${parts[2]}-${m}-${d}`;
             }
-            return str;
+          }
+          return str;
         };
 
         const getMesAno = (dateStr) => {
           let iso = padronizarDataISO(dateStr);
           return iso ? iso.substring(0, 7) : '1900-01';
         };
-        
+
         const addMonths = (yyyyMm, monthsToAdd) => {
           let [year, month] = yyyyMm.split('-').map(Number);
           month += monthsToAdd;
@@ -268,20 +759,20 @@
         // ===============================================
         const datasPorFonte = {};
         rawLineup.forEach(row => {
-            const f = getFonte(row);
-            const dtISO = padronizarDataISO(getLineupPosDate(row));
-            if (dtISO) {
-                if(!datasPorFonte[f]) datasPorFonte[f] = new Set();
-                datasPorFonte[f].add(dtISO);
-            }
+          const f = getFonte(row);
+          const dtISO = padronizarDataISO(getLineupPosDate(row));
+          if (dtISO) {
+            if (!datasPorFonte[f]) datasPorFonte[f] = new Set();
+            datasPorFonte[f].add(dtISO);
+          }
         });
 
         const semanaMapAtual = {};
         const semanaMapPassada = {};
         Object.keys(datasPorFonte).forEach(f => {
-            const sorted = Array.from(datasPorFonte[f]).sort(); // Agora o sort alfabético funciona perfeitamente (YYYY-MM-DD)
-            semanaMapAtual[f] = sorted[sorted.length - 1];
-            semanaMapPassada[f] = sorted.length > 1 ? sorted[sorted.length - 2] : sorted[sorted.length - 1];
+          const sorted = Array.from(datasPorFonte[f]).sort(); // Agora o sort alfabético funciona perfeitamente (YYYY-MM-DD)
+          semanaMapAtual[f] = sorted[sorted.length - 1];
+          semanaMapPassada[f] = sorted.length > 1 ? sorted[sorted.length - 2] : sorted[sorted.length - 1];
         });
 
         // ===============================================
@@ -289,55 +780,55 @@
         // ===============================================
         const configSop = dashboardData.config_sop || {};
         const fontesCarregadasGlobais = [...new Set(rawLineup.map(getFonte).filter(Boolean))];
-        
+
         const getConfigMes = (mesIdx) => {
-            const conf = configSop[mesIdx + 1];
-            return (conf && conf.length > 0) ? conf : fontesCarregadasGlobais;
+          const conf = configSop[mesIdx + 1];
+          return (conf && conf.length > 0) ? conf : fontesCarregadasGlobais;
         };
 
         const processarLineup = (dados, isAtual) => {
-            let aggregated = { total: [0,0,0], produtos: {} };
-            let temp = [{ fontes: {}, produtos: {} }, { fontes: {}, produtos: {} }, { fontes: {}, produtos: {} }];
+          let aggregated = { total: [0, 0, 0], produtos: {} };
+          let temp = [{ fontes: {}, produtos: {} }, { fontes: {}, produtos: {} }, { fontes: {}, produtos: {} }];
 
-            dados.forEach(row => {
-                const fonte = getFonte(row);
-                const dtPosISO = padronizarDataISO(getLineupPosDate(row));
-                const dataAlvo = isAtual ? semanaMapAtual[fonte] : semanaMapPassada[fonte];
-                
-                if (dtPosISO === dataAlvo) {
-                    const mesEtb = getMesAno(getLineupEtb(row));
-                    const idxMes = mesesAlvo.indexOf(mesEtb);
-                    
-                    if (idxMes > -1) {
-                        const fontesPermitidas = getConfigMes(idxMes);
-                        if (fontesPermitidas.includes(fonte)) {
-                            const prod = padronizarProduto(getLineupProd(row));
-                            const vol = getLineupVol(row);
-                            
-                            temp[idxMes].fontes[fonte] = (temp[idxMes].fontes[fonte] || 0) + vol;
-                            if (!temp[idxMes].produtos[prod]) temp[idxMes].produtos[prod] = {};
-                            temp[idxMes].produtos[prod][fonte] = (temp[idxMes].produtos[prod][fonte] || 0) + vol;
-                        }
-                    }
+          dados.forEach(row => {
+            const fonte = getFonte(row);
+            const dtPosISO = padronizarDataISO(getLineupPosDate(row));
+            const dataAlvo = isAtual ? semanaMapAtual[fonte] : semanaMapPassada[fonte];
+
+            if (dtPosISO === dataAlvo) {
+              const mesEtb = getMesAno(getLineupEtb(row));
+              const idxMes = mesesAlvo.indexOf(mesEtb);
+
+              if (idxMes > -1) {
+                const fontesPermitidas = getConfigMes(idxMes);
+                if (fontesPermitidas.includes(fonte)) {
+                  const prod = padronizarProduto(getLineupProd(row));
+                  const vol = getLineupVol(row);
+
+                  temp[idxMes].fontes[fonte] = (temp[idxMes].fontes[fonte] || 0) + vol;
+                  if (!temp[idxMes].produtos[prod]) temp[idxMes].produtos[prod] = {};
+                  temp[idxMes].produtos[prod][fonte] = (temp[idxMes].produtos[prod][fonte] || 0) + vol;
                 }
-            });
+              }
+            }
+          });
 
-            mesesAlvo.forEach((mes, idx) => {
-                const fontesPermitidas = getConfigMes(idx);
-                // O Divisor só contabiliza as fontes que você configurou e que REALMENTE existem no banco de dados.
-                const divisor = Math.max(1, fontesPermitidas.filter(f => fontesCarregadasGlobais.includes(f)).length);
-                
-                let sumTotal = Object.values(temp[idx].fontes).reduce((a, b) => a + b, 0);
-                aggregated.total[idx] = sumTotal / divisor;
-                
-                Object.keys(temp[idx].produtos).forEach(prod => {
-                    let sumProd = Object.values(temp[idx].produtos[prod]).reduce((a, b) => a + b, 0);
-                    if (!aggregated.produtos[prod]) aggregated.produtos[prod] = [0, 0, 0];
-                    aggregated.produtos[prod][idx] = sumProd / divisor;
-                });
-            });
+          mesesAlvo.forEach((mes, idx) => {
+            const fontesPermitidas = getConfigMes(idx);
+            // O Divisor só contabiliza as fontes que você configurou e que REALMENTE existem no banco de dados.
+            const divisor = Math.max(1, fontesPermitidas.filter(f => fontesCarregadasGlobais.includes(f)).length);
 
-            return aggregated;
+            let sumTotal = Object.values(temp[idx].fontes).reduce((a, b) => a + b, 0);
+            aggregated.total[idx] = sumTotal / divisor;
+
+            Object.keys(temp[idx].produtos).forEach(prod => {
+              let sumProd = Object.values(temp[idx].produtos[prod]).reduce((a, b) => a + b, 0);
+              if (!aggregated.produtos[prod]) aggregated.produtos[prod] = [0, 0, 0];
+              aggregated.produtos[prod][idx] = sumProd / divisor;
+            });
+          });
+
+          return aggregated;
         };
 
         const lineupAtual = processarLineup(rawLineup, true);
@@ -353,7 +844,7 @@
               const vol = getSiacespVol(row);
               const prod = padronizarProduto(getSiacespProd(row));
               total += vol;
-              if(!prodTotais[prod]) prodTotais[prod] = 0;
+              if (!prodTotais[prod]) prodTotais[prod] = 0;
               prodTotais[prod] += vol;
             }
           });
@@ -369,7 +860,7 @@
               const vol = getSiacespVol(row);
               const prod = padronizarProduto(getSiacespProd(row));
               total += vol;
-              if(!prodTotais[prod]) prodTotais[prod] = 0;
+              if (!prodTotais[prod]) prodTotais[prod] = 0;
               prodTotais[prod] += vol;
             }
           });
@@ -404,7 +895,7 @@
           total3MesesAtual += lineupAtual.total[idx];
           total3MesesPassado += lineupPassado.total[idx];
           const fontesDoMes = getConfigMes(idx).join(', ');
-          
+
           kpiHtml += `
             <div class="kpi-card" style="background: var(--sop-header-bg);">
               <div class="kpi-label">Proj. ${getMonthName(mes)}</div>
@@ -450,16 +941,16 @@
         let tbodyHtml = '';
 
         const renderVarPerc = (atual, anterior) => {
-          if(!anterior || anterior === 0) return '-';
+          if (!anterior || anterior === 0) return '-';
           const percent = ((atual / anterior) - 1) * 100;
           const cls = percent > 0 ? 'sop-diff-positive' : (percent < 0 ? 'sop-diff-negative' : 'sop-diff-neutral');
           return `<span class="${cls}">${percent > 0 ? '+' : ''}${percent.toFixed(1)}%</span>`;
         };
 
         const gerarLinha = (nome, isTotal = false) => {
-          const lAt = (isTotal ? lineupAtual.total : lineupAtual.produtos[nome]) || [0,0,0];
-          const lPa = (isTotal ? lineupPassado.total : lineupPassado.produtos[nome]) || [0,0,0];
-          
+          const lAt = (isTotal ? lineupAtual.total : lineupAtual.produtos[nome]) || [0, 0, 0];
+          const lPa = (isTotal ? lineupPassado.total : lineupPassado.produtos[nome]) || [0, 0, 0];
+
           const sBase = isTotal ? ytdAtualBase.total : (ytdAtualBase.prodTotais[nome] || 0);
           const a1 = isTotal ? ytdAntMes1.total : (ytdAntMes1.prodTotais[nome] || 0);
           const a2 = isTotal ? ytdAntMes2.total : (ytdAntMes2.prodTotais[nome] || 0);
@@ -525,7 +1016,7 @@
           totalLineUp += vLineUp; totalSiacesp += vSiacesp; totalDisc += disc;
           const pDisc = calcPercent(disc, vSiacesp);
           const discClass = disc < 0 ? 'discrepancy-negative' : 'discrepancy-positive';
-          
+
           let html = '';
           if (includeSource) html += `<td><strong>${row["Fonte Line Up"] || '-'}</strong></td>`;
           html += `
@@ -553,16 +1044,16 @@
         `;
       };
 
-      if(dashboardData.resumo) populateTable('table-resumo', dashboardData.resumo, true);
-      if(dashboardData.unimar) populateTable('table-unimar', dashboardData.unimar);
-      if(dashboardData.transatlantica) populateTable('table-transatlantica', dashboardData.transatlantica);
-      if(dashboardData.wilson) populateTable('table-wilson', dashboardData.wilson);
-      if(dashboardData.orion) populateTable('table-orion', dashboardData.orion);
+      if (dashboardData.resumo) populateTable('table-resumo', dashboardData.resumo, true);
+      if (dashboardData.unimar) populateTable('table-unimar', dashboardData.unimar);
+      if (dashboardData.transatlantica) populateTable('table-transatlantica', dashboardData.transatlantica);
+      if (dashboardData.wilson) populateTable('table-wilson', dashboardData.wilson);
+      if (dashboardData.orion) populateTable('table-orion', dashboardData.orion);
 
-      if(dashboardData.resumo) {
+      if (dashboardData.resumo) {
         const validData = dashboardData.resumo.filter(d => d["Y_PRODUTO PARA"]);
         const chartData1 = [...validData].sort((a, b) => Math.abs(b["Discrepancia"] || 0) - Math.abs(a["Discrepancia"] || 0)).slice(0, 8);
-        if(chartData1.length > 0) {
+        if (chartData1.length > 0) {
           new Chart(document.getElementById('discChart').getContext('2d'), {
             type: 'bar',
             data: { labels: chartData1.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`), datasets: [{ data: chartData1.map(d => d["Discrepancia"] || 0), backgroundColor: '#58a6ff' }] },
@@ -575,10 +1066,10 @@
       const rankingData = [];
       agentStats.forEach(agent => {
         let sLineUp = 0; let sSiacesp = 0;
-        if(agent.data) { agent.data.forEach(r => { if(r["Y_PRODUTO PARA"]) { sLineUp += (r["Volume_LineUp"] || 0); sSiacesp += (r["Volume_SIACESP"] || 0); }}); }
+        if (agent.data) { agent.data.forEach(r => { if (r["Y_PRODUTO PARA"]) { sLineUp += (r["Volume_LineUp"] || 0); sSiacesp += (r["Volume_SIACESP"] || 0); } }); }
         const sDisc = sLineUp - sSiacesp;
         const percent = calcPercent(sDisc, sSiacesp) || 0;
-        if(sSiacesp > 0) rankingData.push({ name: agent.name, percent: percent, absPercent: Math.abs(percent) });
+        if (sSiacesp > 0) rankingData.push({ name: agent.name, percent: percent, absPercent: Math.abs(percent) });
       });
 
       rankingData.sort((a, b) => a.absPercent - b.absPercent);
@@ -593,6 +1084,243 @@
         });
       }
 
+      // ==========================================
+      // LÓGICA DE PESQUISA AVANÇADA E OVERLAP
+      // ==========================================
+      let SEARCH_DATA = [];
+      let SEARCH_FILTERED = [];
+      let chartSearchPort, chartSearchProduct, chartSearchTime, chartSearchAgent;
+
+      function formatToISODate(dateStr) {
+        if (!dateStr) return '';
+        if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) return dateStr.substring(0, 10);
+        if (dateStr.includes('/')) {
+          let parts = dateStr.split('/');
+          if (parts.length === 3) {
+            let year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+            return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          }
+        }
+        return dateStr;
+      }
+
+      function initSearchTab() {
+        const rawLineup = dashboardData.lineup_raw || [];
+
+        // Formata os dados puros para o Search Analytics
+        SEARCH_DATA = rawLineup.map(row => {
+          // 1. DATA: Adicionado Z_ETB (coluna padrão calculada)
+          const date = row.ETB || row["Z_ETB"] || row.etb || '';
+
+          // 2. PORTO: Mapeando todas as variações (PORT, Port, POD, Z_PORT)
+          const port = row.PORT || row.Port || row.POD || row["Z_PORT"] || row["Z_PORTO"] || row.PORTO || 'N/D';
+
+          // 3. PRODUTO: Prioridade MÁXIMA para o 'Y_PRODUTO PARA' (nome já corrigido pelo De-Para)
+          const prod = row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.Produto || 'OUTROS';
+
+          // 4. TONELADAS: Mapeando Qtty (Orion), QUANTITY (Transat), WEIGHT (Wilson) e TONNAGE (Futuro)
+          const volRaw = row.QUANTITY || row.Qtty || row.WEIGHT || row.TONNAGE || row.VOLUME || row.Volume || row.QTD || 0;
+
+          return {
+            ETB: formatToISODate(date),
+            PORTO: String(port).toUpperCase().trim(),
+            PRODUTO: String(prod).toUpperCase().trim(),
+            AGENTE: String(row["FONTE_DADOS"] || "DESCONHECIDA").toUpperCase().trim(),
+            TONELADAS: parseFloat(volRaw) || 0
+          };
+        });
+
+        const product = document.getElementById('search-product');
+        const port = document.getElementById('search-port');
+        const agent = document.getElementById('search-agent');
+
+        product.innerHTML = '<option value="ALL">Todos Produtos</option>';
+        port.innerHTML = '<option value="ALL">Todos Portos</option>';
+        agent.innerHTML = '<option value="ALL">Todos Agentes</option>';
+
+        [...new Set(SEARCH_DATA.map(x => x.PRODUTO))].sort().forEach(v => { product.innerHTML += `<option value="${v}">${v}</option>`; });
+        [...new Set(SEARCH_DATA.map(x => x.PORTO))].sort().forEach(v => { port.innerHTML += `<option value="${v}">${v}</option>`; });
+        [...new Set(SEARCH_DATA.map(x => x.AGENTE))].sort().forEach(v => { agent.innerHTML += `<option value="${v}">${v}</option>`; });
+
+        applySearchFilters();
+      }
+
+      function applySearchFilters() {
+        const start = document.getElementById('search-date-start').value;
+        const end = document.getElementById('search-date-end').value;
+        const product = document.getElementById('search-product').value;
+        const port = document.getElementById('search-port').value;
+        const agent = document.getElementById('search-agent').value;
+
+        SEARCH_FILTERED = SEARCH_DATA.filter(r => {
+          if (start && r.ETB < start) return false;
+          if (end && r.ETB > end) return false;
+          if (product !== 'ALL' && r.PRODUTO !== product) return false;
+          if (port !== 'ALL' && r.PORTO !== port) return false;
+          if (agent !== 'ALL' && r.AGENTE !== agent) return false;
+          return true;
+        });
+
+        renderSearchKPIs();
+        renderSearchCharts();
+        renderSearchTable();
+        buildOverlapAnalysis();
+      }
+
+      function resetSearchFilters() {
+        document.getElementById('search-date-start').value = '';
+        document.getElementById('search-date-end').value = '';
+        document.getElementById('search-product').value = 'ALL';
+        document.getElementById('search-port').value = 'ALL';
+        document.getElementById('search-agent').value = 'ALL';
+        applySearchFilters();
+      }
+
+      function renderSearchKPIs() {
+        const totalTon = SEARCH_FILTERED.reduce((s, r) => s + Number(r.TONELADAS || 0), 0);
+        document.getElementById('search-kpis').innerHTML = `
+              <div class="kpi-card" style="border-left: 4px solid var(--accent);">
+                  <div class="kpi-label">Registros</div>
+                  <div class="kpi-value">${SEARCH_FILTERED.length}</div>
+              </div>
+              <div class="kpi-card" style="border-left: 4px solid var(--accent2);">
+                  <div class="kpi-label">Toneladas Filtradas</div>
+                  <div class="kpi-value">${Math.round(totalTon).toLocaleString('pt-BR')}</div>
+              </div>
+              <div class="kpi-card" style="border-left: 4px solid var(--warn);">
+                  <div class="kpi-label">Portos Contabilizados</div>
+                  <div class="kpi-value">${new Set(SEARCH_FILTERED.map(x => x.PORTO)).size}</div>
+              </div>
+              <div class="kpi-card" style="border-left: 4px solid var(--purple);">
+                  <div class="kpi-label">Agentes Envolvidos</div>
+                  <div class="kpi-value">${new Set(SEARCH_FILTERED.map(x => x.AGENTE)).size}</div>
+              </div>
+          `;
+      }
+
+      function makeChart(id, config) {
+        const ctx = document.getElementById(id).getContext('2d');
+        if (config.type === 'bar' || config.type === 'line') {
+          config.options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } }, y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } } } };
+          if (config.data.datasets.length) {
+            config.data.datasets[0].backgroundColor = config.type === 'line' ? 'transparent' : '#58a6ff';
+            config.data.datasets[0].borderColor = '#58a6ff';
+            config.data.datasets[0].borderWidth = config.type === 'line' ? 2 : 1;
+          }
+        } else if (config.type === 'doughnut') {
+          config.options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e6edf3' } } } };
+          if (config.data.datasets.length) {
+            config.data.datasets[0].backgroundColor = ['#58a6ff', '#3fb950', '#bc8cff', '#d29922', '#f85149', '#8b949e'];
+            config.data.datasets[0].borderColor = '#161b22';
+            config.data.datasets[0].borderWidth = 2;
+          }
+        }
+        return new Chart(ctx, config);
+      }
+
+      function renderSearchCharts() {
+        if (chartSearchPort) chartSearchPort.destroy();
+        if (chartSearchProduct) chartSearchProduct.destroy();
+        if (chartSearchTime) chartSearchTime.destroy();
+        if (chartSearchAgent) chartSearchAgent.destroy();
+
+        const portoMap = {}, produtoMap = {}, tempoMap = {}, agenteMap = {};
+
+        SEARCH_FILTERED.forEach(r => {
+          const t = Number(r.TONELADAS || 0);
+          portoMap[r.PORTO || 'N/D'] = (portoMap[r.PORTO || 'N/D'] || 0) + t;
+          produtoMap[r.PRODUTO || 'N/D'] = (produtoMap[r.PRODUTO || 'N/D'] || 0) + t;
+          agenteMap[r.AGENTE] = (agenteMap[r.AGENTE] || 0) + t;
+
+          const m = r.ETB && r.ETB.length >= 7 ? r.ETB.substring(0, 7) : 'N/D';
+          tempoMap[m] = (tempoMap[m] || 0) + t;
+        });
+
+        chartSearchPort = makeChart('search-chart-port', { type: 'bar', data: { labels: Object.keys(portoMap), datasets: [{ label: 'Toneladas', data: Object.values(portoMap) }] } });
+        chartSearchProduct = makeChart('search-chart-product', { type: 'bar', data: { labels: Object.keys(produtoMap), datasets: [{ label: 'Toneladas', data: Object.values(produtoMap) }] } });
+
+        const tempoLabels = Object.keys(tempoMap).sort();
+        chartSearchTime = makeChart('search-chart-time', { type: 'line', data: { labels: tempoLabels, datasets: [{ label: 'Toneladas', data: tempoLabels.map(x => tempoMap[x]) }] } });
+        chartSearchAgent = makeChart('search-chart-agent', { type: 'doughnut', data: { labels: Object.keys(agenteMap), datasets: [{ data: Object.values(agenteMap) }] } });
+      }
+
+      function buildOverlapAnalysis() {
+        const overlapMesesSet = new Set();
+        SEARCH_FILTERED.forEach(r => { if (r.ETB && r.ETB.length >= 7) overlapMesesSet.add(r.ETB.substring(0, 7)); });
+        const overlapMeses = Array.from(overlapMesesSet).sort();
+
+        const overlapAgentesSet = new Set();
+        SEARCH_FILTERED.forEach(r => overlapAgentesSet.add(r.AGENTE));
+        const overlapAgentes = Array.from(overlapAgentesSet).sort();
+
+        const vol_por_agente_mes = {};
+        overlapAgentes.forEach(ag => {
+          vol_por_agente_mes[ag] = {};
+          overlapMeses.forEach(m => vol_por_agente_mes[ag][m] = 0);
+        });
+
+        SEARCH_FILTERED.forEach(r => {
+          const m = (r.ETB && r.ETB.length >= 7) ? r.ETB.substring(0, 7) : null;
+          if (m && vol_por_agente_mes[r.AGENTE]) vol_por_agente_mes[r.AGENTE][m] += Number(r.TONELADAS || 0);
+        });
+
+        const AGENT_COLORS = { 'UNIMAR': '#58a6ff', 'TRANSATLANTICA': '#3fb950', 'WILSON SONS': '#bc8cff', 'WILSON_SONS': '#bc8cff', 'ORION': '#d29922', 'DEFAULT': '#8b949e' };
+        const FMT = (v) => Math.round(v).toLocaleString('pt-BR');
+
+        let html = '<div class="table-wrap"><table><thead><tr><th>Agente</th>';
+        overlapMeses.forEach(m => html += `<th class="right">${m}</th>`);
+        html += '<th class="right">Total Overlap</th></tr></thead><tbody>';
+
+        overlapAgentes.forEach(ag => {
+          const vols = overlapMeses.map(m => vol_por_agente_mes[ag][m] || 0);
+          const total = vols.reduce((a, b) => a + b, 0);
+          const color = AGENT_COLORS[ag] || AGENT_COLORS['DEFAULT'];
+          html += `<tr><td style="color:${color};font-weight:600">${ag.replace('_', ' ')}</td>`;
+          vols.forEach(v => {
+            const bg = v > 0 ? `background:${color}22` : 'color:var(--muted)';
+            html += `<td class="right mono" style="${bg}">${v > 0 ? FMT(v) : '—'}</td>`;
+          });
+          html += `<td class="right mono" style="font-weight:700">${total > 0 ? FMT(total) : '—'}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+
+        document.getElementById('overlap-analysis').innerHTML = html;
+      }
+
+      function renderSearchTable() {
+        const tbody = document.querySelector('#search-table tbody');
+        tbody.innerHTML = SEARCH_FILTERED.slice(0, 500).map(r => `
+              <tr>
+                  <td class="mono">${r.ETB}</td>
+                  <td>${r.AGENTE}</td>
+                  <td>${r.PORTO}</td>
+                  <td>${r.PRODUTO}</td>
+                  <td class="right mono">${Number(r.TONELADAS).toLocaleString('pt-BR')}</td>
+              </tr>
+          `).join('');
+      }
+
+      function exportSearchExcel() {
+        if (typeof XLSX === 'undefined') return alert('A biblioteca de exportação Excel não foi carregada.');
+        const wb = XLSX.utils.book_new();
+        const agents = [...new Set(SEARCH_FILTERED.map(x => x.AGENTE))];
+
+        agents.forEach(agent => {
+          const rows = SEARCH_FILTERED.filter(r => r.AGENTE === agent);
+          if (!rows.length) return;
+          const ws = XLSX.utils.json_to_sheet(rows);
+          XLSX.utils.book_append_sheet(wb, ws, agent.substring(0, 31));
+        });
+
+        XLSX.writeFile(wb, `Pesquisa_LineUp_${Date.now()}.xlsx`);
+      }
+
+      // INICIALIZADOR: Garanta que isso inicie junto com o dashboard original
+      window.addEventListener('DOMContentLoaded', () => {
+        // Um pequeno delay garante que as variáveis do seu arquivo JS base existam
+        setTimeout(initSearchTab, 300);
+      });
+
       document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
           document.querySelectorAll('.tab, .tab-content').forEach(e => e.classList.remove('active'));
@@ -605,4 +1333,5 @@
     });
   </script>
 </body>
+
 </html>
