@@ -153,10 +153,10 @@ def aplicar_estilo_planilha(ws, titulo):
 
 
 def exportar_dados_para_html(
-    excel_path="Analise_Comparativa_Escalacao.xlsx", 
-    df_siacesp_bruto=None, 
-    dict_lineups=None, 
-    config_sop=None
+    excel_path="Analise_Comparativa_Escalacao.xlsx",
+    df_siacesp_bruto=None,
+    dict_lineups=None,
+    config_sop=None,
 ):
     """
     dict_lineups: Dicionário com nomes das fontes e seus respectivos arquivos (ou DataFrames).
@@ -176,18 +176,20 @@ def exportar_dados_para_html(
     print("\nExportando dados dinâmicos para o Dashboard HTML...")
     try:
         xls = pd.ExcelFile(excel_path)
-        
+
         def ler_aba(nome_aba):
             if nome_aba in xls.sheet_names:
                 df = pd.read_excel(xls, sheet_name=nome_aba, skiprows=2)
                 return df.fillna(0).to_dict(orient="records")
             return []
-            
+
         if isinstance(df_siacesp_bruto, str):
             df_siacesp_bruto = pd.read_excel(df_siacesp_bruto)
-            
+
         if df_siacesp_bruto is not None:
-            for col in df_siacesp_bruto.select_dtypes(include=['datetime64', 'datetimetz']).columns:
+            for col in df_siacesp_bruto.select_dtypes(
+                include=["datetime64", "datetimetz"]
+            ).columns:
                 df_siacesp_bruto[col] = df_siacesp_bruto[col].astype(str)
 
         # --- CONSOLIDADOR DE MÚLTIPLOS LINE UPS ---
@@ -198,12 +200,16 @@ def exportar_dados_para_html(
                     df_temp = pd.read_excel(caminho_ou_df)
                 else:
                     df_temp = caminho_ou_df.copy()
-                    
-                for col in df_temp.select_dtypes(include=['datetime64', 'datetimetz']).columns:
+
+                for col in df_temp.select_dtypes(
+                    include=["datetime64", "datetimetz"]
+                ).columns:
                     df_temp[col] = df_temp[col].astype(str)
-                    
-                df_temp['FONTE_DADOS'] = nome_fonte # Carimba de onde veio a informação
-                lineup_raw_consolidado.extend(df_temp.fillna(0).to_dict(orient="records"))
+
+                df_temp["FONTE_DADOS"] = nome_fonte  # Carimba de onde veio a informação
+                lineup_raw_consolidado.extend(
+                    df_temp.fillna(0).to_dict(orient="records")
+                )
 
         # Configuração padrão de segurança (se não for enviada, usa todas as fontes para todos os meses)
         if not config_sop and dict_lineups:
@@ -211,20 +217,24 @@ def exportar_dados_para_html(
             config_sop = {1: todas_fontes, 2: todas_fontes, 3: todas_fontes}
 
         datasets = {
-            "resumo": ler_aba("Resumo Consolidado"), 
+            "resumo": ler_aba("Resumo Consolidado"),
             "unimar": ler_aba("Comp_UNIMAR"),
             "transatlantica": ler_aba("Comp_TRANSATLANTICA"),
             "wilson": ler_aba("Comp_WILSON_SONS"),
             "orion": ler_aba("Comp_ORION"),
             "siacesp_base": ler_aba("Base_SIACESP_Agregada"),
-            "siacesp_raw": df_siacesp_bruto.fillna(0).to_dict(orient="records") if df_siacesp_bruto is not None else [],
+            "siacesp_raw": (
+                df_siacesp_bruto.fillna(0).to_dict(orient="records")
+                if df_siacesp_bruto is not None
+                else []
+            ),
             "lineup_raw": lineup_raw_consolidado,
-            "config_sop": config_sop or {}
+            "config_sop": config_sop or {},
         }
-        
+
         with open("dados_dashboard.js", "w", encoding="utf-8") as f:
             f.write("const dashboardData = " + json.dumps(datasets, default=str) + ";")
-        
+
         print("✅ Arquivo 'dados_dashboard.js' atualizado com Suporte Multi-Lineup!")
     except Exception as e:
         print(f"Erro ao exportar dados para HTML: {e}")
@@ -330,20 +340,21 @@ def main():
     # ADICIONE A CHAMADA DA FUNÇÃO AQUI:
     # Certifique-se de que o nome do arquivo bate com o que você acabou de salvar
     exportar_dados_para_html(
-        excel_path="Analise_Comparativa_Escalacao.xlsx", 
-        df_siacesp_bruto="BI_Importacao Siacesp.xlsx", 
+        excel_path="Analise_Comparativa_Escalacao.xlsx",
+        df_siacesp_bruto="BI_Importacao Siacesp.xlsx",
         dict_lineups={
             "ORION": "BI_Line Up_ORION.xlsx",
             "TRANSATLANTICA": "BI_Line Up_TRANSATLANTICA.xlsx",
             "WSONS": "BI_Line Up_WILSON SONS.xlsx",
-            "UNIMAR": "BI_Line Up.xlsx"
+            "UNIMAR": "BI_Line Up.xlsx",
         },
         config_sop={
-            1: ["UNIMAR",  "TRANSATLANTICA", "ORION"],
-            2: ["UNIMAR",  "TRANSATLANTICA", "ORION"],
-            3: ["ORION"]
-        }
+            1: ["UNIMAR", "TRANSATLANTICA", "ORION"],
+            2: ["UNIMAR", "TRANSATLANTICA", "ORION"],
+            3: ["ORION"],
+        },
     )
+
 
 # Executa o pipeline
 if __name__ == "__main__":
