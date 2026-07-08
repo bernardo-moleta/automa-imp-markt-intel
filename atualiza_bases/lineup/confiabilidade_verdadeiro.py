@@ -56,21 +56,29 @@ class ComparadorEscalacao:
         df_mes = df_filtrado[df_filtrado[col_etb].dt.month == self.mes_etb_alvo]
 
         # Converte a coluna de volume customizada e agrega os dados
-        df_mes[col_volume] = pd.to_numeric(df_mes[col_volume], errors="coerce").fillna(
-            0
-        )
+        df_mes[col_volume] = pd.to_numeric(df_mes[col_volume], errors="coerce").fillna(0)
         lineup_agg = df_mes.groupby("Y_PRODUTO PARA", as_index=False)[col_volume].sum()
-        lineup_agg.rename(columns={col_volume: f"Volume_LineUp"}, inplace=True)
+        lineup_agg.rename(columns={col_volume: "Volume_LineUp"}, inplace=True)
 
         # Realiza um outer merge para garantir que produtos exclusivos de uma base também apareçam
         comparacao = pd.merge(
             lineup_agg, self.siacesp_agg, on="Y_PRODUTO PARA", how="outer"
         ).fillna(0)
 
-        # Calcula a discrepância
+        # Calcula a discrepância volumétrica pura
         comparacao["Discrepancia"] = (
-            comparacao[f"Volume_LineUp"] - comparacao["Volume_SIACESP"]
+            comparacao["Volume_LineUp"] - comparacao["Volume_SIACESP"]
         )
+
+        # Calcula o % DISC individual linha a linha
+        def calc_perc(row):
+            if row["Volume_SIACESP"] > 0:
+                return row["Discrepancia"] / row["Volume_SIACESP"]
+            elif row["Volume_LineUp"] > 0:
+                return 1.0 # 100% de erro se não havia no SIACESP mas apareceu no Line Up
+            return 0.0
+
+        comparacao["% DISC."] = comparacao.apply(calc_perc, axis=1)
 
         # Organiza as maiores discrepâncias no topo e adiciona a identificação da origem
         comparacao = comparacao.sort_values(
@@ -78,10 +86,34 @@ class ComparadorEscalacao:
         ).reset_index(drop=True)
         comparacao.insert(0, "Fonte Line Up", nome)
 
+        # =======================================================
+        # LÓGICA WAPE: CÁLCULO DA LINHA DE TOTAL PONDERADA
+        # =======================================================
+        total_lineup = comparacao["Volume_LineUp"].sum()
+        total_siacesp = comparacao["Volume_SIACESP"].sum()
+        diferenca_liquida = total_lineup - total_siacesp
+        
+        # O pulo do gato: Somar os erros absolutos para que não se anulem
+        soma_erros_absolutos = comparacao["Discrepancia"].abs().sum()
+        wape_percentual = (soma_erros_absolutos / total_siacesp) if total_siacesp > 0 else 0
+
+        linha_total = pd.DataFrame([{
+            "Fonte Line Up": nome,
+            "Y_PRODUTO PARA": "TOTAL",
+            "Volume_LineUp": total_lineup,
+            "Volume_SIACESP": total_siacesp,
+            "Discrepancia": diferenca_liquida,
+            "% DISC.": wape_percentual
+        }])
+
+        # Anexa a linha de total formatada ao fim do DataFrame
+        comparacao = pd.concat([comparacao, linha_total], ignore_index=True)
+
         # Arredonda os valores decimais para manter o relatório limpo
         comparacao["Volume_LineUp"] = comparacao["Volume_LineUp"].round(2)
         comparacao["Volume_SIACESP"] = comparacao["Volume_SIACESP"].round(2)
         comparacao["Discrepancia"] = comparacao["Discrepancia"].round(2)
+        comparacao["% DISC."] = comparacao["% DISC."].round(4)
 
         return comparacao
 
@@ -117,6 +149,11 @@ def aplicar_estilo_planilha(ws, titulo):
         ws.iter_cols(min_row=3, max_row=ws.max_row, min_col=1, max_col=ws.max_column)
     ):
         max_length = 0
+        is_perc_col = False
+        
+        if col[0].value == "% DISC.":
+            is_perc_col = True
+
         for row_idx, cell in enumerate(col):
             if row_idx == 0:  # Linha de Cabeçalho
                 cell.fill = header_fill
@@ -129,7 +166,11 @@ def aplicar_estilo_planilha(ws, titulo):
                 # Alinha números à direita e textos à esquerda
                 if isinstance(cell.value, (int, float)):
                     cell.alignment = Alignment(horizontal="right")
-                    cell.number_format = "#,##0.00"
+                    # Aplica formato de % nativo se for a nova coluna
+                    if is_perc_col:
+                        cell.number_format = "0.00%"
+                    else:
+                        cell.number_format = "#,##0.00"
                 else:
                     cell.alignment = Alignment(horizontal="left")
 
@@ -158,21 +199,6 @@ def exportar_dados_para_html(
     dict_lineups=None,
     config_sop=None,
 ):
-    """
-    dict_lineups: Dicionário com nomes das fontes e seus respectivos arquivos (ou DataFrames).
-        Ex: {
-            "ORION": "BI_Line Up_ORION.xlsx",
-            "TRANSATLANTICA": "BI_Line Up_TRANSATLANTICA.xlsx",
-            "WSONS": "BI_Line Up_WILSON SONS.xlsx",
-            "UNIMAR": "BI_Line Up.xlsx"
-        }
-    config_sop: Dicionário definindo quais fontes usar em cada mês de projeção S&OP (1, 2 e 3).
-        Ex: {
-            1: ["ORION", "TRANSATLANTICA"], # Junho usa a média destas duas
-            2: ["WSONS"],                   # Julho usa apenas esta
-            3: ["ORION", "UNIMAR"]          # Agosto usa a média destas duas
-        }
-    """
     print("\nExportando dados dinâmicos para o Dashboard HTML...")
     try:
         xls = pd.ExcelFile(excel_path)
@@ -211,7 +237,6 @@ def exportar_dados_para_html(
                     df_temp.fillna(0).to_dict(orient="records")
                 )
 
-        # Configuração padrão de segurança (se não for enviada, usa todas as fontes para todos os meses)
         if not config_sop and dict_lineups:
             todas_fontes = list(dict_lineups.keys())
             config_sop = {1: todas_fontes, 2: todas_fontes, 3: todas_fontes}
@@ -242,7 +267,6 @@ def exportar_dados_para_html(
 
 def main():
     # 1. Instanciar a classe base configurando Data da Posição (2026-06-11) e Mês ETB (Maio)
-    # NOTA: Ajuste o nome dos arquivos nos parâmetros conforme estão salvos localmente
     comparador = ComparadorEscalacao("BI_Importacao Siacesp.xlsx", "2026-06-11", 5)
 
     # 2. Processar cada base com suas colunas de volume específicas
@@ -280,8 +304,10 @@ def main():
 
     # 3. Concatenar as bases e extrair as Top 20 maiores divergências num contexto consolidado
     resumo = pd.concat([comp_unimar, comp_trans, comp_wilson, comp_orion])
+    
+    # IMPORTANTE: A linha de "TOTAL" agora é excluída do 'resumo' para não entrar no ranking das Top 20
     resumo = (
-        resumo[resumo["Discrepancia"] != 0]
+        resumo[(resumo["Discrepancia"] != 0) & (resumo["Y_PRODUTO PARA"] != "TOTAL")]
         .sort_values(by="Discrepancia", key=abs, ascending=False)
         .head(20)
     )
@@ -321,7 +347,7 @@ def main():
         ws_orion.append(r)
     aplicar_estilo_planilha(ws_orion, "Comparação: Line Up ORION vs SIACESP")
 
-    # Aba 5: Base de Segurança SIACESP (apenas os volumes agrupados originais)
+    # Aba 5: Base de Segurança SIACESP
     ws_siacesp = wb.create_sheet(title="Base_SIACESP_Agregada")
     for r in dataframe_to_rows(
         comparador.siacesp_agg.sort_values(by="Volume_SIACESP", ascending=False),
@@ -336,9 +362,7 @@ def main():
     print("Relatório 'Analise_Comparativa_Escalacao.xlsx' gerado com sucesso!")
 
     # ==========================================
-
-    # ADICIONE A CHAMADA DA FUNÇÃO AQUI:
-    # Certifique-se de que o nome do arquivo bate com o que você acabou de salvar
+    # Integração HTML/JS
     exportar_dados_para_html(
         excel_path="Analise_Comparativa_Escalacao.xlsx",
         df_siacesp_bruto="BI_Importacao Siacesp.xlsx",
@@ -354,7 +378,6 @@ def main():
             3: ["ORION"],
         },
     )
-
 
 # Executa o pipeline
 if __name__ == "__main__":
