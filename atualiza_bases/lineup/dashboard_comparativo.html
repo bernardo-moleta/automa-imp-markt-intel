@@ -574,7 +574,7 @@
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-label">Agente Mais Confiável</div>
-          <div class="kpi-value" id="kpi-best-agent" style="text-transform: uppercase;">-</div>
+          <div class="kpi-value" id="kpi-best-agent" style="text-transform: uppercase; color: #3fb950;">-</div>
           <div class="kpi-label" id="kpi-best-agent-label" style="margin-top:16px; margin-bottom:0;">-</div>
         </div>
         <div class="kpi-card">
@@ -590,12 +590,12 @@
       </div>
       <div class="charts-grid">
         <div class="chart-container">
-          <div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas (MT)</div>
-          <div class="chart-wrapper"><canvas id="discChart"></canvas></div>
-        </div>
-        <div class="chart-container">
           <div class="kpi-label" style="margin-bottom: 20px;">Ranking de Confiabilidade Geral</div>
           <div class="chart-wrapper"><canvas id="rankingChart"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <div class="kpi-label" style="margin-bottom: 20px;">Top Discrepâncias Absolutas (MT)</div>
+          <div class="chart-wrapper"><canvas id="discChart"></canvas></div>
         </div>
       </div>
     </div>
@@ -1154,7 +1154,7 @@
           if (chartData1.length > 0) {
             new Chart(document.getElementById('discChart').getContext('2d'), {
               type: 'bar',
-              data: { labels: chartData1.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`), datasets: [{ data: chartData1.map(d => d["Discrepancia"] || 0), backgroundColor: '#58a6ff' }] },
+              data: { labels: chartData1.map(d => `${d["Fonte Line Up"] || '-'} | ${d["Y_PRODUTO PARA"]}`), datasets: [{ data: chartData1.map(d => d["Discrepancia"] || 0), backgroundColor: '#8b949e' }] },
               options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false, grid: { color: '#21262d' } }, y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } } } }
             });
           }
@@ -1200,7 +1200,7 @@
               labels: rankingData.map(d => d.name),
               datasets: [{
                 data: rankingData.map(d => d.percent),
-                backgroundColor: rankingData.map((d, i) => i === 0 ? '#3fb950' : '#8b949e')
+                backgroundColor: rankingData.map((d, i) => i === 0 ? '#3fb950' : '#58a6ff')
               }]
             },
             options: {
