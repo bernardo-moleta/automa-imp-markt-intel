@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import warnings
+from prophet import Prophet
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
@@ -126,6 +127,53 @@ class ComparadorEscalacao:
         comparacao["% DISC."] = comparacao["% DISC."].round(4)
 
         return comparacao
+
+
+def gerar_dados_previsao(df_siacesp, coluna_data="Z_PERÍODO", coluna_volume="Volume_SIACESP", meses_futuros=6):
+    """
+    Agrega o histórico do SIACESP, treina o modelo Prophet e retorna um dicionário
+    pronto para ser injetado no JavaScript.
+    """
+    # 1. Preparar os dados no formato exigido pelo Prophet (ds e y)
+    df = df_siacesp.copy()
+    df['ds'] = pd.to_datetime(df[coluna_data], errors='coerce')
+    df = df.dropna(subset=['ds'])
+    
+    # Agregar o volume total por mês para suavizar o gráfico
+    df_agg = df.groupby(df['ds'].dt.to_period('M'))[coluna_volume].sum().reset_index()
+    df_agg['ds'] = df_agg['ds'].dt.to_timestamp()
+    df_agg.rename(columns={coluna_volume: 'y'}, inplace=True)
+    
+    # 2. Configurar e treinar o Prophet
+    # Desativamos sazonalidade diária/semanal pois o foco é mensal/anual (importação)
+    modelo = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+    modelo.fit(df_agg)
+    
+    # 3. Gerar os meses futuros
+    futuro = modelo.make_future_dataframe(periods=meses_futuros, freq='MS') # MS = Início do mês
+    previsao = modelo.predict(futuro)
+    
+    # 4. Mesclar dados reais e previstos para a visualização
+    dados_js = []
+    
+    # O Prophet gera yhat (previsão), yhat_lower (mínimo) e yhat_upper (máximo)
+    # Vamos criar uma estrutura unificada
+    for index, row in previsao.iterrows():
+        data_str = row['ds'].strftime('%Y-%m')
+        
+        # Tenta encontrar o valor real correspondente (se for histórico)
+        real_row = df_agg[df_agg['ds'] == row['ds']]
+        valor_real = real_row['y'].values[0] if not real_row.empty else None
+        
+        dados_js.append({
+            "data": data_str,
+            "real": valor_real,
+            "tendencia": round(row['yhat'], 2),
+            "limite_inferior": round(row['yhat_lower'], 2),
+            "limite_superior": round(row['yhat_upper'], 2)
+        })
+        
+    return dados_js
 
 
 def aplicar_estilo_planilha(ws, titulo):
@@ -391,6 +439,16 @@ def main():
             3: ["ORION"],
         },
     )
+    
+    # Ajustado: usando a instância 'comparador' e apontando a coluna correta "VOLUME"
+    dados_prophet = gerar_dados_previsao(
+        df_siacesp=comparador.df_siacesp, 
+        coluna_volume="VOLUME", 
+        meses_futuros=6
+    )
+
+    with open('dados_dashboard.js', 'a', encoding='utf-8') as f:
+        f.write(f"\nconst FORECAST_DATA = {json.dumps(dados_prophet)};\n")
 
 
 # Executa o pipeline

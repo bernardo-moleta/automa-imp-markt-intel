@@ -666,6 +666,8 @@
     <div class="tabs">
       <div class="tab active" data-target="sop">S&OP Semanal Multi-Fontes</div>
 
+      <div class="tab" data-target="tab-previsao" onclick="setTimeout(renderProphetChart, 50)">PREVISÃO (PROPHET)</div>
+
       <div class="tab" data-target="volume-agente">Volume por Agente</div>
 
       <div class="tab" data-target="resumo">Resumo Consolidado</div>
@@ -836,7 +838,8 @@
       <div class="va-cards-grid" id="va-cards"></div>
 
       <div class="chart-container" style="height: 420px;">
-        <div class="kpi-label" style="margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="kpi-label"
+          style="margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center;">
           <span>Volume mensal por agente (detalhe)</span>
           <span id="va-period-label" style="font-family: var(--mono); font-weight: 400; color: var(--muted);"></span>
         </div>
@@ -907,6 +910,18 @@
         </div>
       </div>
 
+
+      <div id="tab-previsao" class="tab-content" style="display: none;">
+        <div class="kpi-card" style="margin-bottom: 20px;">
+          <h3>Projeção de Volume - Modelo Prophet (Meta)</h3>
+          <p style="color: var(--muted); font-size: 0.9rem;">Histórico consolidado SIACESP cruzado com projeção sazonal
+            para os próximos meses.</p>
+        </div>
+        <div class="chart-container" style="height: 500px; position: relative; width: 100%;">
+          <canvas id="prophet-chart"></canvas>
+        </div>
+      </div>
+
     </div>
   </main>
   <footer
@@ -939,6 +954,115 @@
           const colorClass = Math.abs(percent) > 5 ? (percent < 0 ? 'percent-red' : 'percent-green') : 'percent-neutral';
           return `<span class="percent-badge ${colorClass}">${prefix}${percent.toFixed(2)}%</span>`;
         };
+
+        // Gráfico Prophet (Previsão de Volume)
+        window.prophetChartInstance = null;
+
+        function renderProphetChart() {
+          const ctxElement = document.getElementById('prophet-chart');
+          if (!ctxElement || typeof FORECAST_DATA === 'undefined') return;
+
+          if (window.prophetChartInstance) window.prophetChartInstance.destroy();
+
+          const labels = FORECAST_DATA.map(d => d.data);
+          const dataReal = FORECAST_DATA.map(d => d.real);
+          const dataTendencia = FORECAST_DATA.map(d => d.tendencia);
+          const dataLower = FORECAST_DATA.map(d => d.limite_inferior);
+          const dataUpper = FORECAST_DATA.map(d => d.limite_superior);
+
+          // Cores seguindo a sua paleta austera e premium
+          const colorReal = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#58a6ff';
+          const colorPrev = getComputedStyle(document.documentElement).getPropertyValue('--warn').trim() || '#d29922';
+
+          const ctx = ctxElement.getContext('2d');
+
+          window.prophetChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: 'Volume Real (SIACESP)',
+                  data: dataReal,
+                  borderColor: colorReal,
+                  backgroundColor: colorReal,
+                  borderWidth: 2,
+                  pointRadius: 3,
+                  tension: 0.3,
+                  zIndex: 10
+                },
+                {
+                  label: 'Tendência Prevista',
+                  data: dataTendencia,
+                  borderColor: colorPrev,
+                  borderWidth: 2,
+                  borderDash: [5, 5], // Linha tracejada para indicar que é previsão
+                  pointRadius: 0,
+                  tension: 0.3
+                },
+                // --- INÍCIO DA ÁREA DE CONFIANÇA ---
+                {
+                  label: 'Limite Superior',
+                  data: dataUpper,
+                  borderColor: 'transparent',
+                  backgroundColor: 'transparent',
+                  pointRadius: 0,
+                  fill: false,
+                  tension: 0.3
+                },
+                {
+                  label: 'Intervalo de Confiança',
+                  data: dataLower,
+                  borderColor: 'transparent',
+                  backgroundColor: colorPrev + '22', // 22 em HEX = ~13% de opacidade
+                  pointRadius: 0,
+                  fill: '-1', // Preenche a área do Limite Inferior até o Limite Superior
+                  tension: 0.3
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: {
+                mode: 'index',
+                intersect: false,
+              },
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: {
+                    color: '#e6edf3',
+                    usePointStyle: true,
+                    filter: function (item) {
+                      // Oculta as legendas técnicas dos limites para manter a interface limpa
+                      return !item.text.includes('Limite') && !item.text.includes('Intervalo');
+                    }
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) => {
+                      if (ctx.dataset.label.includes('Limite') || ctx.dataset.label.includes('Intervalo')) {
+                        return null; // Esconde os limites brutos do tooltip
+                      }
+                      const val = ctx.parsed.y;
+                      if (val === null) return null;
+                      return `${ctx.dataset.label}: ${Math.round(val).toLocaleString('pt-BR')} t`;
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e', maxTicksLimit: 12 } },
+                y: {
+                  grid: { color: '#21262d' },
+                  ticks: { color: '#8b949e', callback: (v) => (typeof formatCompact === 'function' ? formatCompact(v) : v) }
+                }
+              }
+            }
+          });
+        }
 
         // ==========================================
         // LÓGICA DA ABA S&OP SEMANAL (SCALABLE)
