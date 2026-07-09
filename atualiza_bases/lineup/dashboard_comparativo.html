@@ -168,6 +168,62 @@
       min-height: 0;
     }
 
+    /* ── PROPHET CHART CONTAINER (CORRIGIDO) ── */
+    .prophet-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 28px;
+    }
+
+    .prophet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .prophet-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .prophet-header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      flex: 1;
+    }
+
+    .prophet-selector {
+      padding: 8px 12px;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      font-family: var(--sans);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .prophet-selector:hover {
+      border-color: var(--accent);
+    }
+
+    #prophet-chart {
+      width: 100% !important;
+      height: 400px !important;
+    }
+
+    .prophet-chart-wrapper {
+      position: relative;
+      height: 400px;
+      width: 100%;
+    }
+
     /* ── NAV TABS ── */
     .tabs {
       background: var(--surface);
@@ -666,7 +722,7 @@
     <div class="tabs">
       <div class="tab active" data-target="sop">S&OP Semanal Multi-Fontes</div>
 
-      <div class="tab" data-target="tab-previsao" onclick="setTimeout(renderProphetChart, 50)">PREVISÃO (PROPHET)</div>
+      <div class="tab" data-target="tab-previsao">PREVISÃO (PROPHET)</div>
 
       <div class="tab" data-target="volume-agente">Volume por Agente</div>
 
@@ -909,20 +965,34 @@
           <div class="chart-wrapper"><canvas id="search-chart-agent"></canvas></div>
         </div>
       </div>
+    </div>
 
+    <div id="tab-previsao" class="tab-content">
+      <div class="prophet-container">
+        <div class="prophet-header">
+          <div>
+            <h3>Projeção de Volume - Modelo Prophet</h3>
+            <p>Histórico consolidado SIACESP cruzado com projeção sazonal.</p>
+          </div>
 
-      <div id="tab-previsao" class="tab-content" style="display: none;">
-        <div class="kpi-card" style="margin-bottom: 20px;">
-          <h3>Projeção de Volume - Modelo Prophet (Meta)</h3>
-          <p style="color: var(--muted); font-size: 0.9rem;">Histórico consolidado SIACESP cruzado com projeção sazonal
-            para os próximos meses.</p>
+          <select id="prophet-product-filter" class="prophet-selector" onchange="renderProphetChart()">
+            <option value="GERAL">Volume Total (Geral)</option>
+            <option value="MOP">MOP</option>
+            <option value="SAM">SAM</option>
+            <option value="UREA">UREIA</option>
+            <option value="MAP">MAP</option>
+            <option value="NP">NP</option>
+            <option value="SSP">SSP</option>
+            <option value="TSP">TSP</option>
+          </select>
         </div>
-        <div class="chart-container" style="height: 500px; position: relative; width: 100%;">
+
+        <div class="prophet-chart-wrapper">
           <canvas id="prophet-chart"></canvas>
         </div>
       </div>
-
     </div>
+
   </main>
   <footer
     style="background: var(--surface); border-top: 1px solid var(--border); padding: 16px 32px; text-align: center; font-size: 12px; color: var(--muted);">
@@ -960,29 +1030,41 @@
 
         function renderProphetChart() {
           const ctxElement = document.getElementById('prophet-chart');
-          if (!ctxElement || typeof FORECAST_DATA === 'undefined') return;
+          if (!ctxElement || typeof FORECAST_DATA === 'undefined') {
+            console.warn('Canvas do Prophet ou FORECAST_DATA não encontrados.');
+            return;
+          }
 
-          if (window.prophetChartInstance) window.prophetChartInstance.destroy();
+          const filtroEl = document.getElementById('prophet-product-filter');
+          const produtoSelecionado = filtroEl ? filtroEl.value : 'GERAL';
+          const dadosDoGrafico = FORECAST_DATA[produtoSelecionado];
 
-          const labels = FORECAST_DATA.map(d => d.data);
-          const dataReal = FORECAST_DATA.map(d => d.real);
-          const dataTendencia = FORECAST_DATA.map(d => d.tendencia);
-          const dataLower = FORECAST_DATA.map(d => d.limite_inferior);
-          const dataUpper = FORECAST_DATA.map(d => d.limite_superior);
+          if (!dadosDoGrafico || dadosDoGrafico.length === 0) {
+            console.warn(`Sem dados para o produto: ${produtoSelecionado}`);
+            return;
+          }
 
-          // Cores seguindo a sua paleta austera e premium
+          if (window.prophetChartInstance) {
+            window.prophetChartInstance.destroy();
+          }
+
+          const labels = dadosDoGrafico.map(d => d.data);
+          const dataReal = dadosDoGrafico.map(d => d.real);
+          const dataTendencia = dadosDoGrafico.map(d => d.tendencia);
+          const dataLower = dadosDoGrafico.map(d => d.limite_inferior);
+          const dataUpper = dadosDoGrafico.map(d => d.limite_superior);
+
           const colorReal = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#58a6ff';
           const colorPrev = getComputedStyle(document.documentElement).getPropertyValue('--warn').trim() || '#d29922';
 
           const ctx = ctxElement.getContext('2d');
-
           window.prophetChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
               labels: labels,
               datasets: [
                 {
-                  label: 'Volume Real (SIACESP)',
+                  label: `Volume Real - ${produtoSelecionado}`,
                   data: dataReal,
                   borderColor: colorReal,
                   backgroundColor: colorReal,
@@ -992,15 +1074,14 @@
                   zIndex: 10
                 },
                 {
-                  label: 'Tendência Prevista',
+                  label: `Tendência Prevista - ${produtoSelecionado}`,
                   data: dataTendencia,
                   borderColor: colorPrev,
                   borderWidth: 2,
-                  borderDash: [5, 5], // Linha tracejada para indicar que é previsão
+                  borderDash: [5, 5],
                   pointRadius: 0,
                   tension: 0.3
                 },
-                // --- INÍCIO DA ÁREA DE CONFIANÇA ---
                 {
                   label: 'Limite Superior',
                   data: dataUpper,
@@ -1014,9 +1095,9 @@
                   label: 'Intervalo de Confiança',
                   data: dataLower,
                   borderColor: 'transparent',
-                  backgroundColor: colorPrev + '22', // 22 em HEX = ~13% de opacidade
+                  backgroundColor: colorPrev + '22',
                   pointRadius: 0,
-                  fill: '-1', // Preenche a área do Limite Inferior até o Limite Superior
+                  fill: '-1',
                   tension: 0.3
                 }
               ]
@@ -1024,27 +1105,21 @@
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              interaction: {
-                mode: 'index',
-                intersect: false,
-              },
+              interaction: { mode: 'index', intersect: false },
               plugins: {
                 legend: {
                   position: 'bottom',
                   labels: {
                     color: '#e6edf3',
                     usePointStyle: true,
-                    filter: function (item) {
-                      // Oculta as legendas técnicas dos limites para manter a interface limpa
-                      return !item.text.includes('Limite') && !item.text.includes('Intervalo');
-                    }
+                    filter: (item) => !item.text.includes('Limite') && !item.text.includes('Intervalo')
                   }
                 },
                 tooltip: {
                   callbacks: {
                     label: (ctx) => {
                       if (ctx.dataset.label.includes('Limite') || ctx.dataset.label.includes('Intervalo')) {
-                        return null; // Esconde os limites brutos do tooltip
+                        return null;
                       }
                       const val = ctx.parsed.y;
                       if (val === null) return null;
@@ -1057,12 +1132,14 @@
                 x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e', maxTicksLimit: 12 } },
                 y: {
                   grid: { color: '#21262d' },
-                  ticks: { color: '#8b949e', callback: (v) => (typeof formatCompact === 'function' ? formatCompact(v) : v) }
+                  ticks: { color: '#8b949e', callback: (v) => formatCompact(v) }
                 }
               }
             }
           });
         }
+
+        window.renderProphetChart = renderProphetChart;
 
         // ==========================================
         // LÓGICA DA ABA S&OP SEMANAL (SCALABLE)
@@ -1973,6 +2050,12 @@
             document.querySelectorAll('.tabs > .tab, .tab-content').forEach(e => e.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById(tab.dataset.target).classList.add('active');
+
+            // Redundância proposital: garante o render do gráfico Prophet
+            // mesmo se o atributo onclick da aba falhar por qualquer motivo.
+            if (tab.dataset.target === 'tab-previsao') {
+              setTimeout(renderProphetChart, 50);
+            }
           });
         });
 

@@ -1,4 +1,5 @@
 import json
+import math
 import pandas as pd
 import warnings
 from prophet import Prophet
@@ -129,135 +130,117 @@ class ComparadorEscalacao:
         return comparacao
 
 
-def gerar_dados_previsao(df_siacesp, coluna_data="Z_PERÍODO", coluna_volume="Volume_SIACESP", meses_futuros=6):
+def aplicar_estilo_planilha(ws, titulo):
+    """Aplica estilos a uma planilha do Excel"""
+    header_fill = PatternFill(start_color="161B22", end_color="161B22", fill_type="solid")
+    header_font = Font(bold=True, color="E6EDF3")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    for row in ws.iter_rows(min_row=1, max_row=1, min_col=1, max_col=ws.max_column):
+        for cell in row:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+        for cell in row:
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+
+
+def gerar_dados_previsao(df_siacesp, coluna_data="Z_PERÍODO", coluna_volume="VOLUME", coluna_produto="Y_PRODUTO PARA", meses_futuros=6):
     """
-    Agrega o histórico do SIACESP, treina o modelo Prophet e retorna um dicionário
-    pronto para ser injetado no JavaScript.
+    ✅ CORRIGIDO: Treina múltiplos modelos Prophet (Geral e Específicos por Produto) 
+    e exporta um dicionário segmentado com VALIDAÇÃO COMPLETA.
     """
-    # 1. Preparar os dados no formato exigido pelo Prophet (ds e y)
     df = df_siacesp.copy()
     df['ds'] = pd.to_datetime(df[coluna_data], errors='coerce')
     df = df.dropna(subset=['ds'])
+    df[coluna_volume] = pd.to_numeric(df[coluna_volume], errors='coerce').fillna(0)
     
-    # Agregar o volume total por mês para suavizar o gráfico
-    df_agg = df.groupby(df['ds'].dt.to_period('M'))[coluna_volume].sum().reset_index()
-    df_agg['ds'] = df_agg['ds'].dt.to_timestamp()
-    df_agg.rename(columns={coluna_volume: 'y'}, inplace=True)
-    
-    # 2. Configurar e treinar o Prophet
-    # Desativamos sazonalidade diária/semanal pois o foco é mensal/anual (importação)
-    modelo = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
-    modelo.fit(df_agg)
-    
-    # 3. Gerar os meses futuros
-    futuro = modelo.make_future_dataframe(periods=meses_futuros, freq='MS') # MS = Início do mês
-    previsao = modelo.predict(futuro)
-    
-    # 4. Mesclar dados reais e previstos para a visualização
-    dados_js = []
-    
-    # O Prophet gera yhat (previsão), yhat_lower (mínimo) e yhat_upper (máximo)
-    # Vamos criar uma estrutura unificada
-    for index, row in previsao.iterrows():
-        data_str = row['ds'].strftime('%Y-%m')
+    # Lista de produtos alvo + cenário geral
+    produtos_alvo = ['MOP', 'SAM', 'UREA', 'MAP', 'NP', 'SSP', 'TSP']
+    resultados_exportacao = {}
+
+    print("Iniciando geração de previsões com Prophet...")
+
+    # Função interna para treinar o Prophet e evitar repetição de código
+    def processar_modelo(df_filtrado, nome_chave):
+        print(f"  ⏳ Processando modelo: {nome_chave}...")
         
-        # Tenta encontrar o valor real correspondente (se for histórico)
-        real_row = df_agg[df_agg['ds'] == row['ds']]
-        valor_real = real_row['y'].values[0] if not real_row.empty else None
+        # Se não houver dados para o produto, retorna lista vazia
+        if df_filtrado.empty:
+            print(f"    ⚠️  Sem dados para: {nome_chave}")
+            resultados_exportacao[nome_chave] = []
+            return
+            
+        df_agg = df_filtrado.groupby(df_filtrado['ds'].dt.to_period('M'))[coluna_volume].sum().reset_index()
+        df_agg['ds'] = df_agg['ds'].dt.to_timestamp()
+        df_agg.rename(columns={coluna_volume: 'y'}, inplace=True)
         
-        dados_js.append({
-            "data": data_str,
-            "real": valor_real,
-            "tendencia": round(row['yhat'], 2),
-            "limite_inferior": round(row['yhat_lower'], 2),
-            "limite_superior": round(row['yhat_upper'], 2)
-        })
-        
-    return dados_js
+        # Prophet precisa de um histórico mínimo (ex: 2 meses) para não quebrar
+        if len(df_agg) < 2:
+            print(f"    ⚠️  Histórico insuficiente (< 2 meses) para: {nome_chave}")
+            resultados_exportacao[nome_chave] = []
+            return
+
+        try:
+            modelo = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+            modelo.fit(df_agg)
+            
+            futuro = modelo.make_future_dataframe(periods=meses_futuros, freq='MS') 
+            previsao = modelo.predict(futuro)
+            
+            dados_js = []
+            for index, row in previsao.iterrows():
+                data_str = row['ds'].strftime('%Y-%m')
+                
+                real_row = df_agg[df_agg['ds'] == row['ds']]
+                valor_real_numpy = real_row['y'].values[0] if not real_row.empty else None
+                
+                valor_real = None if pd.isna(valor_real_numpy) else round(float(valor_real_numpy), 2)
+                
+                dados_js.append({
+                    "data": data_str,
+                    "real": valor_real,
+                    "tendencia": round(float(row['yhat']), 2),
+                    "limite_inferior": round(float(row['yhat_lower']), 2),
+                    "limite_superior": round(float(row['yhat_upper']), 2)
+                })
+                
+            resultados_exportacao[nome_chave] = dados_js
+            print(f"    ✅ {nome_chave}: {len(dados_js)} pontos de dados gerados")
+            
+        except Exception as e:
+            print(f"    ❌ Erro ao treinar {nome_chave}: {str(e)}")
+            resultados_exportacao[nome_chave] = []
+
+    # 1. Roda o modelo GERAL (com todos os dados)
+    processar_modelo(df, "GERAL")
+
+    # 2. Roda um modelo para CADA PRODUTO específico
+    for produto in produtos_alvo:
+        # Filtra ignorando maiúsculas/minúsculas e garantindo que é texto
+        df_produto = df[df[coluna_produto].fillna('').str.upper() == produto.upper()]
+        processar_modelo(df_produto, produto)
+
+    print(f"\n✅ Previsões geradas com sucesso!")
+    print(f"   Produtos com dados: {sum(1 for v in resultados_exportacao.values() if v)}")
+    
+    return resultados_exportacao
 
 
-def aplicar_estilo_planilha(ws, titulo):
+def exportar_dados_para_html(excel_path, df_siacesp_bruto=None, dict_lineups=None, config_sop=None):
     """
-    Formata as células do Excel com padrão visual (cores corporativas e zebrado).
+    Lê o arquivo Excel gerado, consolida os dados raw (SIACESP + LineUps) 
+    e exporta para um arquivo JavaScript para o Dashboard.
     """
-    header_fill = PatternFill(
-        start_color="2c3e50", end_color="2c3e50", fill_type="solid"
-    )
-    header_font = Font(name="Arial", size=11, bold=True, color="ffffff")
-    zebra_fill = PatternFill(
-        start_color="f2f4f5", end_color="f2f4f5", fill_type="solid"
-    )
-    white_fill = PatternFill(
-        start_color="ffffff", end_color="ffffff", fill_type="solid"
-    )
-    thin_border = Border(
-        left=Side(style="thin", color="d3d3d3"),
-        right=Side(style="thin", color="d3d3d3"),
-        top=Side(style="thin", color="d3d3d3"),
-        bottom=Side(style="thin", color="d3d3d3"),
-    )
-
-    # Insere e pinta o título superior
-    ws.insert_rows(1, 2)
-    ws["A1"] = titulo
-    ws["A1"].font = Font(name="Arial", size=14, bold=True, color="2c3e50")
-
-    # Itera sobre todas as colunas para aplicar estilos e auto-ajustar larguras
-    for col_idx, col in enumerate(
-        ws.iter_cols(min_row=3, max_row=ws.max_row, min_col=1, max_col=ws.max_column)
-    ):
-        max_length = 0
-        is_perc_col = False
-
-        if col[0].value == "% DISC.":
-            is_perc_col = True
-
-        for row_idx, cell in enumerate(col):
-            if row_idx == 0:  # Linha de Cabeçalho
-                cell.fill = header_fill
-                cell.font = header_font
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-            else:  # Dados
-                cell.fill = zebra_fill if row_idx % 2 == 0 else white_fill
-                cell.font = Font(name="Arial", size=10)
-
-                # Alinha números à direita e textos à esquerda
-                if isinstance(cell.value, (int, float)):
-                    cell.alignment = Alignment(horizontal="right")
-                    # Aplica formato de % nativo se for a nova coluna
-                    if is_perc_col:
-                        cell.number_format = "0.00%"
-                    else:
-                        cell.number_format = "#,##0.00"
-                else:
-                    cell.alignment = Alignment(horizontal="left")
-
-            cell.border = thin_border
-
-            # Checa o tamanho para ajuste da coluna
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except:
-                pass
-
-        adjusted_width = max_length + 2
-        ws.column_dimensions[col[0].column_letter].width = (
-            adjusted_width if adjusted_width > 12 else 12
-        )
-
-    ws.freeze_panes = (
-        "A4"  # Congela as linhas de cabeçalho e título ao rolar para baixo
-    )
-
-
-def exportar_dados_para_html(
-    excel_path="Analise_Comparativa_Escalacao.xlsx",
-    df_siacesp_bruto=None,
-    dict_lineups=None,
-    config_sop=None,
-):
-    print("\nExportando dados dinâmicos para o Dashboard HTML...")
     try:
         xls = pd.ExcelFile(excel_path)
 
@@ -323,14 +306,21 @@ def exportar_dados_para_html(
 
         print("✅ Arquivo 'dados_dashboard.js' atualizado com Suporte Multi-Lineup!")
     except Exception as e:
-        print(f"Erro ao exportar dados para HTML: {e}")
+        print(f"❌ Erro ao exportar dados para HTML: {e}")
 
 
 def main():
+    print("=" * 60)
+    print("PIPELINE COMPLETO: Escalação + Previsão com Prophet")
+    print("=" * 60 + "\n")
+
     # 1. Instanciar a classe base configurando Data da Posição (2026-06-11) e Mês ETB (Maio)
+    print("1️⃣  Carregando dados SIACESP...")
     comparador = ComparadorEscalacao("BI_Importacao Siacesp.xlsx", "2026-06-11", 5)
+    print(f"   ✅ SIACESP carregado: {len(comparador.df_siacesp)} registros\n")
 
     # 2. Processar cada base com suas colunas de volume específicas
+    print("2️⃣  Processando Line Ups...")
     comp_unimar = comparador.processar_lineup(
         nome="UNIMAR",
         caminho="BI_Line Up.xlsx",
@@ -338,6 +328,7 @@ def main():
         col_etb="ETB",
         col_volume="TONNAGE",
     )
+    print(f"   ✅ UNIMAR processado: {len(comp_unimar)} linhas")
 
     comp_trans = comparador.processar_lineup(
         nome="TRANSATLANTICA",
@@ -346,6 +337,7 @@ def main():
         col_etb="ETB",
         col_volume="QUANTITY",
     )
+    print(f"   ✅ TRANSATLANTICA processado: {len(comp_trans)} linhas")
 
     comp_wilson = comparador.processar_lineup(
         nome="WILSON SONS",
@@ -354,6 +346,7 @@ def main():
         col_etb="ETB",
         col_volume="WEIGHT",
     )
+    print(f"   ✅ WILSON SONS processado: {len(comp_wilson)} linhas")
 
     comp_orion = comparador.processar_lineup(
         nome="ORION",
@@ -362,8 +355,10 @@ def main():
         col_etb="Z_ETB",
         col_volume="Qtty",
     )
+    print(f"   ✅ ORION processado: {len(comp_orion)} linhas\n")
 
     # 3. Concatenar as bases e extrair as Top 20 maiores divergências num contexto consolidado
+    print("3️⃣  Consolidando dados...")
     resumo = pd.concat([comp_unimar, comp_trans, comp_wilson, comp_orion])
 
     # IMPORTANTE: A linha de "TOTAL" agora é excluída do 'resumo' para não entrar no ranking das Top 20
@@ -372,8 +367,10 @@ def main():
         .sort_values(by="Discrepancia", key=abs, ascending=False)
         .head(20)
     )
+    print(f"   ✅ Top 20 divergências identificadas\n")
 
     # 4. Construção do Arquivo Excel usando OpenPyXL
+    print("4️⃣  Gerando arquivo Excel...")
     wb = Workbook()
 
     # Aba 1: Resumo Global
@@ -403,12 +400,13 @@ def main():
         ws_wilson.append(r)
     aplicar_estilo_planilha(ws_wilson, "Comparação: Line Up WILSON SONS vs SIACESP")
 
+    # Aba 5: ORION
     ws_orion = wb.create_sheet(title="Comp_ORION")
     for r in dataframe_to_rows(comp_orion, index=False, header=True):
         ws_orion.append(r)
     aplicar_estilo_planilha(ws_orion, "Comparação: Line Up ORION vs SIACESP")
 
-    # Aba 5: Base de Segurança SIACESP
+    # Aba 6: Base de Segurança SIACESP
     ws_siacesp = wb.create_sheet(title="Base_SIACESP_Agregada")
     for r in dataframe_to_rows(
         comparador.siacesp_agg.sort_values(by="Volume_SIACESP", ascending=False),
@@ -420,10 +418,10 @@ def main():
 
     # 5. Salva o resultado final
     wb.save("Analise_Comparativa_Escalacao.xlsx")
-    print("Relatório 'Analise_Comparativa_Escalacao.xlsx' gerado com sucesso!")
+    print("   ✅ Excel gerado: 'Analise_Comparativa_Escalacao.xlsx'\n")
 
-    # ==========================================
-    # Integração HTML/JS
+    # 6. EXPORTAÇÃO PARA HTML
+    print("5️⃣  Exportando dados para Dashboard...")
     exportar_dados_para_html(
         excel_path="Analise_Comparativa_Escalacao.xlsx",
         df_siacesp_bruto="BI_Importacao Siacesp.xlsx",
@@ -439,16 +437,36 @@ def main():
             3: ["ORION"],
         },
     )
-    
-    # Ajustado: usando a instância 'comparador' e apontando a coluna correta "VOLUME"
+    print("   ✅ Dados consolidados exportados\n")
+
+    # 7. GERAÇÃO DE PREVISÕES PROPHET ✅
+    print("6️⃣  Gerando previsões com Prophet...")
     dados_prophet = gerar_dados_previsao(
         df_siacesp=comparador.df_siacesp, 
+        coluna_produto="Y_PRODUTO PARA", 
         coluna_volume="VOLUME", 
         meses_futuros=6
     )
 
-    with open('dados_dashboard.js', 'a', encoding='utf-8') as f:
-        f.write(f"\nconst FORECAST_DATA = {json.dumps(dados_prophet)};\n")
+    # VALIDAÇÃO: Garante que pelo menos GERAL tem dados
+    if "GERAL" not in dados_prophet or not dados_prophet["GERAL"]:
+        print("❌ ERRO: Modelo GERAL não gerou dados! Verifique o histórico de dados.")
+        return
+
+    with open("dados_dashboard.js", "a", encoding="utf-8") as f:
+        f.write(f"\n\nconst FORECAST_DATA = {json.dumps(dados_prophet, indent=2)};\n")
+    
+    print(f"   ✅ Dados Prophet exportados: {json.dumps({k: len(v) for k, v in dados_prophet.items()}, indent=6)}\n")
+
+    print("=" * 60)
+    print("✅ PIPELINE COMPLETO COM SUCESSO!")
+    print("=" * 60)
+    print("\n📊 Arquivos gerados:")
+    print("   • Analise_Comparativa_Escalacao.xlsx (Relatório executivo)")
+    print("   • dados_dashboard.js (Base de dados do Dashboard)")
+    print("\n🌐 Próximo passo:")
+    print("   Abra 'dashboard_comparativo_CORRIGIDO.html' em um navegador")
+    print("   e vá à aba '🔮 Previsão (PROPHET)' para visualizar as previsões.\n")
 
 
 # Executa o pipeline
