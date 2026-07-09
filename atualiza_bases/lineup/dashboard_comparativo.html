@@ -282,6 +282,119 @@
       margin-bottom: 28px;
     }
 
+    /* ── VOLUME POR AGENTE (nova aba) ── */
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .section-title.numbered::before {
+      display: none;
+    }
+
+    .va-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .agent-summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--agent-color, var(--accent));
+      border-radius: 10px;
+      padding: 20px 22px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .agent-summary-card:hover {
+      border-color: var(--border2);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, .35);
+    }
+
+    .agent-summary-card .agent-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      color: var(--agent-color, var(--text));
+    }
+
+    .agent-summary-card .agent-stats-line {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+      margin-bottom: 16px;
+    }
+
+    .agent-summary-card .agent-stats-line .dot-sep {
+      color: var(--border2);
+      margin: 0 6px;
+    }
+
+    .agent-summary-card .agent-total {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: var(--mono);
+      line-height: 1;
+      margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+
+    .agent-summary-card .agent-total-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .agent-summary-card .product-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .product-badge {
+      padding: 4px 9px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: var(--mono);
+      letter-spacing: .3px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .product-badge.more-badge {
+      cursor: pointer;
+      background: transparent !important;
+      color: var(--muted) !important;
+      border: 1px dashed var(--border2) !important;
+      transition: color .15s ease, border-color .15s ease;
+    }
+
+    .product-badge.more-badge:hover {
+      color: var(--text) !important;
+      border-color: var(--muted) !important;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -523,6 +636,12 @@
       font-size: 10px;
       font-weight: bold;
     }
+
+    /* Ajuste de contraste para o ícone nativo de calendário */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -546,6 +665,9 @@
   <main id="main-content">
     <div class="tabs">
       <div class="tab active" data-target="sop">S&OP Semanal Multi-Fontes</div>
+
+      <div class="tab" data-target="volume-agente">Volume por Agente</div>
+
       <div class="tab" data-target="resumo">Resumo Consolidado</div>
 
       <div class="tab" data-target="detalhado">Detalhado</div>
@@ -678,6 +800,47 @@
             <tfoot></tfoot>
           </table>
         </div>
+      </div>
+    </div>
+
+    <div id="volume-agente" class="tab-content">
+      <div class="section-title">Volume por Agente</div>
+
+      <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+        <div style="display:flex; flex-direction:column;">
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Data Posição</label>
+          <input type="date" id="va-date-start"
+            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+        </div>
+        <div style="display:flex; flex-direction:column; width: 1px;">
+          <input type="date" id="va-date-end"
+            style="padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: none;">
+        </div>
+        <div style="display:flex; flex-direction:column;">
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Produto</label>
+          <select id="va-product" multiple style="min-width: 160px;"></select>
+        </div>
+        <div style="display:flex; flex-direction:column;">
+          <label style="font-size: 11px; color: var(--muted); margin-bottom:4px;">Porto</label>
+          <select id="va-port" multiple style="min-width: 160px;"></select>
+        </div>
+        <div style="display:flex; align-items:flex-end; gap:8px;">
+          <button onclick="applyVolumeAgenteFilters()"
+            style="padding: 8px 16px; height: 38px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Filtrar</button>
+          <button onclick="resetVolumeAgenteFilters()"
+            style="padding: 8px 16px; height: 38px; background: var(--border2); color: #fff; border: none; border-radius: 4px; cursor: pointer;">Limpar</button>
+        </div>
+      </div>
+
+      <div class="section-title numbered"><span class="step-num">1</span>Resumo por Agente</div>
+      <div class="va-cards-grid" id="va-cards"></div>
+
+      <div class="chart-container" style="height: 420px;">
+        <div class="kpi-label" style="margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center;">
+          <span>Volume mensal por agente (detalhe)</span>
+          <span id="va-period-label" style="font-family: var(--mono); font-weight: 400; color: var(--muted);"></span>
+        </div>
+        <div class="chart-wrapper"><canvas id="va-chart-monthly"></canvas></div>
       </div>
     </div>
 
@@ -1284,6 +1447,230 @@
           applySearchFilters();
         }
 
+        // ==========================================
+        // ABA: VOLUME POR AGENTE
+        // ==========================================
+        let VOLUME_AGENTE_DATA = [];
+        let VOLUME_AGENTE_FILTERED = [];
+        let vaChartMonthly;
+
+        const VA_AGENT_COLORS = {
+          'UNIMAR': getComputedStyle(document.documentElement).getPropertyValue('--danger').trim(),
+          'TRANSATLANTICA': getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim(),
+          'ORION': getComputedStyle(document.documentElement).getPropertyValue('--warn').trim(),
+          'WILSON SONS': getComputedStyle(document.documentElement).getPropertyValue('--purple').trim(),
+        };
+        const VA_AGENT_ORDER = ['UNIMAR', 'TRANSATLANTICA', 'ORION', 'WILSON SONS'];
+        const VA_PRODUCT_PALETTE = ['#d29922', '#58a6ff', '#3fb950', '#bc8cff', '#f85149', '#79c0ff', '#56d364', '#e3b341', '#ff9bce', '#a5d6ff'];
+
+        function vaProductColor(name) {
+          let hash = 0;
+          for (let i = 0; i < name.length; i++) hash = (hash + name.charCodeAt(i) * (i + 1)) % VA_PRODUCT_PALETTE.length;
+          return VA_PRODUCT_PALETTE[hash];
+        }
+
+        // Mesma normalização de data usada na aba S&OP, para garantir que o filtro
+        // de Data Posição opere sobre a semana do lineup da mesma forma.
+        function padronizarDataISO(dStr) {
+          if (!dStr) return null;
+          let str = String(dStr).split(' ')[0].split('T')[0];
+          if (str.includes('/')) {
+            let parts = str.split('/');
+            if (parts.length === 3 && parts[2].length === 4) {
+              let m = parts[1].padStart(2, '0');
+              let d = parts[0].padStart(2, '0');
+              if (parseInt(m) > 12) { m = parts[0].padStart(2, '0'); d = parts[1].padStart(2, '0'); }
+              return `${parts[2]}-${m}-${d}`;
+            }
+          }
+          return str;
+        }
+
+        function initVolumeAgenteTab() {
+          const rawLineup = dashboardData.lineup_raw || [];
+
+          VOLUME_AGENTE_DATA = rawLineup.map(row => {
+            const etbDate = row.ETB || row["Z_ETB"] || row.etb || '';
+            const posDateRaw = row["DATA POSIÇÃO"] || row["DATA_POSIÇÃO"] || row["Z_DATA_POSIÇÃO"] || row.data_posicao || row.Data || etbDate;
+            const posDate = padronizarDataISO(posDateRaw);
+            const port = row.PORT || row.Port || row.POD || row["Z_PORT"] || row["Z_PORTO"] || row.PORTO || 'N/D';
+            const prod = row["Y_PRODUTO PARA"] || row.Cargo || row.CARGO || row.COMMODITY || row.Produto || 'OUTROS';
+            const volRaw = row.QUANTITY || row.Qtty || row.WEIGHT || row.TONNAGE || row.VOLUME || row.Volume || row.QTD || 0;
+
+            return {
+              ETB: formatToISODate(etbDate),
+              DATA_POSICAO: formatToISODate(posDate),
+              PORTO: String(port).toUpperCase().trim(),
+              PRODUTO: String(prod).toUpperCase().trim(),
+              AGENTE: String(row["FONTE_DADOS"] || "DESCONHECIDA").toUpperCase().trim(),
+              TONELADAS: parseFloat(volRaw) || 0
+            };
+          });
+
+          window.applyVolumeAgenteFilters = applyVolumeAgenteFilters;
+          window.resetVolumeAgenteFilters = resetVolumeAgenteFilters;
+
+          const product = document.getElementById('va-product');
+          const port = document.getElementById('va-port');
+          product.innerHTML = '';
+          port.innerHTML = '';
+
+          const produtos = [...new Set(VOLUME_AGENTE_DATA.map(x => x.PRODUTO))].sort();
+          product.innerHTML = produtos.map(v => `<option value="${v}">${v}</option>`).join('');
+
+          const portos = [...new Set(VOLUME_AGENTE_DATA.map(x => x.PORTO))].sort();
+          port.innerHTML = portos.map(v => `<option value="${v}">${v}</option>`).join('');
+
+          applyVolumeAgenteFilters();
+        }
+
+        function applyVolumeAgenteFilters() {
+          const start = document.getElementById('va-date-start').value;
+          const end = document.getElementById('va-date-end').value;
+          const products = getSelectedValues('va-product');
+          const ports = getSelectedValues('va-port');
+
+          VOLUME_AGENTE_FILTERED = VOLUME_AGENTE_DATA.filter(r => {
+            if (start && r.DATA_POSICAO < start) return false;
+            if (end && r.DATA_POSICAO > end) return false;
+            if (products.length && !products.includes(r.PRODUTO)) return false;
+            if (ports.length && !ports.includes(r.PORTO)) return false;
+            return true;
+          });
+
+          renderVolumeAgenteCards();
+          renderVolumeAgenteChart();
+        }
+
+        function resetVolumeAgenteFilters() {
+          document.getElementById('va-date-start').value = '';
+          document.getElementById('va-date-end').value = '';
+
+          ['va-product', 'va-port'].forEach(id => {
+            const el = document.getElementById(id);
+            Array.from(el.options).forEach(opt => opt.selected = false);
+            el.dispatchEvent(new Event('change'));
+          });
+
+          applyVolumeAgenteFilters();
+        }
+
+        function renderVolumeAgenteCards() {
+          const container = document.getElementById('va-cards');
+          const agentsPresent = VA_AGENT_ORDER.filter(a => VOLUME_AGENTE_FILTERED.some(r => r.AGENTE === a));
+
+          if (agentsPresent.length === 0) {
+            container.innerHTML = `<div class="kpi-card" style="grid-column: 1 / -1; text-align:center; color: var(--muted);">Nenhum registro encontrado para os filtros selecionados.</div>`;
+            return;
+          }
+
+          const MAX_VISIBLE_PRODUCTS = 6;
+
+          container.innerHTML = agentsPresent.map(agent => {
+            const rows = VOLUME_AGENTE_FILTERED.filter(r => r.AGENTE === agent);
+            const total = rows.reduce((s, r) => s + r.TONELADAS, 0);
+            const meses = new Set(rows.filter(r => r.ETB).map(r => r.ETB.substring(0, 7))).size;
+            const portos = new Set(rows.map(r => r.PORTO)).size;
+            const registros = rows.length;
+            const color = VA_AGENT_COLORS[agent] || 'var(--accent)';
+            const displayName = agent.replace('_', ' ');
+
+            // Ordena produtos pelo volume (maior primeiro) para mostrar os mais relevantes
+            const volPorProduto = {};
+            rows.forEach(r => { volPorProduto[r.PRODUTO] = (volPorProduto[r.PRODUTO] || 0) + r.TONELADAS; });
+            const produtosOrdenados = Object.keys(volPorProduto).sort((a, b) => volPorProduto[b] - volPorProduto[a]);
+            const visiveis = produtosOrdenados.slice(0, MAX_VISIBLE_PRODUCTS);
+            const ocultos = produtosOrdenados.slice(MAX_VISIBLE_PRODUCTS);
+            const chipsId = `va-chips-${agent.replace(/[^A-Z0-9]/gi, '')}`;
+
+            const chip = (p) => `<span class="product-badge" style="background:${vaProductColor(p)}22;color:${vaProductColor(p)};border-color:${vaProductColor(p)}55;">${p}</span>`;
+
+            return `
+              <div class="agent-summary-card" style="--agent-color:${color};">
+                <div class="agent-name">${displayName}</div>
+                <div class="agent-stats-line">${meses} meses<span class="dot-sep">•</span>${portos} portos<span class="dot-sep">•</span>${registros.toLocaleString('pt-BR')} registros</div>
+                <div class="agent-total">${formatCompact(total)}</div>
+                <div class="agent-total-label">Toneladas Totais</div>
+                <div class="product-badges" id="${chipsId}">
+                  ${visiveis.map(chip).join('')}
+                  ${ocultos.length ? `<span class="product-badge more-badge" onclick="toggleAgentChips('${chipsId}')">+${ocultos.length} outros</span><span class="hidden-chips" style="display:none;">${ocultos.map(chip).join('')}</span>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        function toggleAgentChips(id) {
+          const wrap = document.getElementById(id);
+          if (!wrap) return;
+          const hidden = wrap.querySelector('.hidden-chips');
+          const moreBtn = wrap.querySelector('.more-badge');
+          if (!hidden || !moreBtn) return;
+          const isCollapsed = hidden.style.display === 'none';
+          if (isCollapsed) {
+            hidden.style.display = 'contents';
+            moreBtn.textContent = 'ver menos';
+          } else {
+            hidden.style.display = 'none';
+            moreBtn.textContent = `+${hidden.children.length} outros`;
+          }
+        }
+        window.toggleAgentChips = toggleAgentChips;
+
+        function renderVolumeAgenteChart() {
+          if (vaChartMonthly) vaChartMonthly.destroy();
+
+          const agentsPresent = VA_AGENT_ORDER.filter(a => VOLUME_AGENTE_FILTERED.some(r => r.AGENTE === a));
+          const mesesSet = new Set();
+          VOLUME_AGENTE_FILTERED.forEach(r => { if (r.ETB) mesesSet.add(r.ETB.substring(0, 7)); });
+          const meses = [...mesesSet].sort();
+
+          if (meses.length) {
+            document.getElementById('va-period-label').textContent = `${meses[0]} – ${meses[meses.length - 1]}`;
+          } else {
+            document.getElementById('va-period-label').textContent = '';
+          }
+
+          const datasets = agentsPresent.map(agent => {
+            const color = VA_AGENT_COLORS[agent] || '#8b949e';
+            const map = {};
+            meses.forEach(m => map[m] = 0);
+            VOLUME_AGENTE_FILTERED.filter(r => r.AGENTE === agent).forEach(r => {
+              if (r.ETB) { const m = r.ETB.substring(0, 7); if (map[m] !== undefined) map[m] += r.TONELADAS; }
+            });
+            return {
+              label: agent.replace('_', ' '),
+              data: meses.map(m => map[m]),
+              borderColor: color,
+              backgroundColor: color + '33',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3,
+              pointBackgroundColor: color,
+              borderWidth: 2
+            };
+          });
+
+          const ctx = document.getElementById('va-chart-monthly').getContext('2d');
+          vaChartMonthly = new Chart(ctx, {
+            type: 'line',
+            data: { labels: meses, datasets: datasets },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: {
+                legend: { position: 'bottom', labels: { color: '#e6edf3', usePointStyle: true, boxWidth: 8 } },
+                tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString('pt-BR')} t` } }
+              },
+              scales: {
+                x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
+                y: { grid: { color: '#21262d' }, ticks: { color: '#8b949e', callback: (v) => formatCompact(v) } }
+              }
+            }
+          });
+        }
+
         function getSelectedValues(id) {
           return Array.from(document.getElementById(id).selectedOptions).map(o => o.value);
         }
@@ -1454,6 +1841,7 @@
         window.addEventListener('DOMContentLoaded', () => {
           // Um pequeno delay garante que as variáveis do arquivo JS base existam
           setTimeout(initSearchTab, 300);
+          setTimeout(initVolumeAgenteTab, 300);
         });
 
         document.querySelectorAll('.tabs > .tab').forEach(tab => {
@@ -1582,6 +1970,8 @@
         createCheckboxDropdown('search-product', 'Todos os Produtos');
         createCheckboxDropdown('search-port', 'Todos os Portos');
         createCheckboxDropdown('search-agent', 'Todos os Agentes');
+        createCheckboxDropdown('va-product', 'Todos os Produtos');
+        createCheckboxDropdown('va-port', 'Todos os Portos');
       });
 
     </script>

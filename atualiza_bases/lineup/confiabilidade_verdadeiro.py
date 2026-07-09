@@ -382,7 +382,7 @@ def main():
         dict_lineups={
             "ORION": "BI_Line Up_ORION.xlsx",
             "TRANSATLANTICA": "BI_Line Up_TRANSATLANTICA.xlsx",
-            "WSONS": "BI_Line Up_WILSON SONS.xlsx",
+            "WILSON SONS": "BI_Line Up_WILSON SONS.xlsx",
             "UNIMAR": "BI_Line Up.xlsx",
         },
         config_sop={
