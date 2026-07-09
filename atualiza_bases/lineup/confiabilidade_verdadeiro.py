@@ -445,7 +445,7 @@ def main():
         df_siacesp=comparador.df_siacesp, 
         coluna_produto="Y_PRODUTO PARA", 
         coluna_volume="VOLUME", 
-        meses_futuros=6
+        meses_futuros=7
     )
 
     # VALIDAÇÃO: Garante que pelo menos GERAL tem dados
