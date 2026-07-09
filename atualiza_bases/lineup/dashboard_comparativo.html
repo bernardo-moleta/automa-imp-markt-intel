@@ -698,6 +698,18 @@
       filter: invert(1);
       cursor: pointer;
     }
+
+    .prophet-chart-notes {
+      margin-top: 15px;
+      /* Cria um espaçamento entre o gráfico e o texto */
+      padding: 10px;
+      background-color: var(--surface);
+      /* Um fundo sutil para destacar a nota */
+      border-left: 4px solid var(--border2);
+      /* Uma bordinha elegante do lado esquerdo */
+      font-size: 14px;
+      color: var(--text);
+    }
   </style>
 </head>
 
@@ -990,9 +1002,6 @@
         <div class="prophet-chart-wrapper">
           <canvas id="prophet-chart"></canvas>
         </div>
-      </div>
-    </div>
-
   </main>
   <footer
     style="background: var(--surface); border-top: 1px solid var(--border); padding: 16px 32px; text-align: center; font-size: 12px; color: var(--muted);">
