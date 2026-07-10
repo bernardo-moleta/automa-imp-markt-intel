@@ -28,3 +28,7 @@ def main() -> pd.DataFrame:
     df_enso = baixar_dados_oni()
 
     return df_enso
+
+
+if __name__ == "__main__":
+    main()
