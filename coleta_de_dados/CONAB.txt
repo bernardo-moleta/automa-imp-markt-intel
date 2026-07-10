@@ -1,9 +1,30 @@
-# == Área PLnatada e Safra
-import basedosdados as bd
+"""Coleta os dados de área plantada e safra da CONAB e gera um Dataframe."""
 
-# Para puxar os dados da CONAB usando seu projeto do Google Cloud (gratuito)
-# Requer configuração simples de um project_id do GCP
-df_conab = bd.read_table(dataset_id='br_conab_estimativa_safra',
-                         table_id='mesorregiao',
-                         billing_project_id="<SEU_PROJECT_ID_AQUI>")
-print(df_conab.head())
+import basedosdados as bd
+import logging
+import pandas as pd
+
+logging.basicConfig(level=logging.INFO)
+logging = logging.getLogger(__name__)
+
+
+def baixar_dados_conab() -> pd.DataFrame:
+    """Baixa os dados de área plantada e safra da CONAB e gera um Dataframe."""
+    # Para puxar os dados da CONAB usando seu projeto do Google Cloud (gratuito)
+    # Requer configuração simples de um project_id do GCP
+    df_conab = bd.read_table(
+        dataset_id="br_conab_estimativa_safra",
+        table_id="mesorregiao",
+        billing_project_id="<SEU_PROJECT_ID_AQUI>",
+    )
+    logging.info("Dados da CONAB baixados com sucesso.")
+    logging.info(df_conab.head())
+
+    return df_conab
+
+
+def main() -> pd.DataFrame:
+    """Fluxo de execução: baixar os dados de área plantada e safra da CONAB."""
+    df_conab = baixar_dados_conab()
+
+    return df_conab
