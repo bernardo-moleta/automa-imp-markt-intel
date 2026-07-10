@@ -1,0 +1,137 @@
+"""Baixar dados de clima da estação meteorológica de Paranaguá (A807) do INMET."""
+
+import datetime
+import logging
+
+import pandas as pd
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+"""Configuração e datas para a coleta de dados climáticos"""
+HOJE = datetime.date.today()
+INICIO = datetime.date(2026, 6, 1)
+ESTACAO_PARANAGUA = "A001"
+
+# MUDANÇA 1: Endpoint oficial de dados horários (mais estável)
+BASE_URL = "https://apitempo.inmet.gov.br/estacao"
+
+# Melhorando o disfarce para passar pelo Firewall do INMET
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json"
+}
+
+def _periodos_de_1_mes(inicio: datetime.date, fim: datetime.date) -> list[tuple[datetime.date, datetime.date]]:
+    """Quebra o intervalo em blocos de até 1 mês para não sobrecarregar a API do INMET."""
+    periodos = []
+    atual = inicio
+    while atual < fim:
+        data_avancada = (pd.to_datetime(atual) + pd.DateOffset(months=1)).date()
+        proximo = min(data_avancada - datetime.timedelta(days=1), fim)
+        
+        periodos.append((atual, proximo))
+        atual = proximo + datetime.timedelta(days=1)
+    return periodos
+
+
+def _criar_sessao() -> requests.Session:
+    """Cria uma sessão com retentativas automáticas para conexões instáveis."""
+    sessao = requests.Session()
+    retries = Retry(
+        total=5,
+        backoff_factor=2,
+        status_forcelist=[500, 502, 503, 504],
+    )
+    sessao.mount("https://", HTTPAdapter(max_retries=retries))
+    return sessao
+
+
+def _periodos_de_6_meses(
+    inicio: datetime.date, fim: datetime.date
+) -> list[tuple[datetime.date, datetime.date]]:
+    """Quebra o intervalo em blocos de até 6 meses (limite da API do INMET)."""
+    periodos = []
+    atual = inicio
+    while atual < fim:
+        # MUDANÇA 2: Corrigindo o DeprecationWarning usando timedelta nativo do Python
+        data_avancada = (pd.to_datetime(atual) + pd.DateOffset(months=6)).date()
+        proximo = min(data_avancada - datetime.timedelta(days=1), fim)
+
+        periodos.append((atual, proximo))
+        atual = proximo + datetime.timedelta(days=1)
+    return periodos
+
+
+def baixar_dados_clima(
+    inicio: datetime.date = INICIO,
+    fim: datetime.date = HOJE,
+    estacao: str = ESTACAO_PARANAGUA,
+) -> pd.DataFrame:
+    """Baixa os dados horários e agrega para diário, blindado contra retornos vazios/inválidos."""
+    sessao = _criar_sessao()
+    blocos = []
+
+    for data_ini, data_fim in _periodos_de_1_mes(inicio, fim):
+        url = f"{BASE_URL}/{data_ini}/{data_fim}/{estacao}"
+        
+        try:
+            resposta = sessao.get(url, headers=HEADERS, timeout=30)
+
+            if resposta.status_code == 404:
+                logger.warning("Sem dados para o período %s a %s (Erro 404).", data_ini, data_fim)
+                continue
+
+            resposta.raise_for_status()
+            
+            # TRATAMENTO DE ERRO: Tenta converter para JSON de forma segura
+            try:
+                dados = resposta.json()
+            except requests.exceptions.JSONDecodeError:
+                logger.error(
+                    "O INMET não retornou um JSON válido de %s a %s. Retorno da API: '%s'", 
+                    data_ini, 
+                    data_fim, 
+                    resposta.text[:200]  # Mostra os primeiros 200 caracteres para depuração
+                )
+                continue
+
+            if dados and isinstance(dados, list):
+                blocos.append(pd.DataFrame(dados))
+            else:
+                logger.warning("Resposta inesperada (ou vazia) no período %s a %s.", data_ini, data_fim)
+
+        except requests.exceptions.RequestException as e:
+            logger.error("Erro de conexão na requisição do período %s a %s: %s", data_ini, data_fim, e)
+            continue
+
+    if not blocos:
+        raise ValueError("Nenhum dado retornado pela API do INMET para o período solicitado.")
+
+    df_clima = pd.concat(blocos, ignore_index=True)
+
+    # Agrupando os dados horários para o formato diário
+    if "CHUVA" in df_clima.columns and "DT_MEDICAO" in df_clima.columns:
+        df_clima["CHUVA"] = pd.to_numeric(df_clima["CHUVA"], errors="coerce").fillna(0)
+        df_diario = df_clima.groupby("DT_MEDICAO", as_index=False).agg({"CHUVA": "sum"})
+    else:
+        logger.error("Colunas essenciais não encontradas na resposta da API.")
+        return df_clima
+
+    logger.info("Dados de clima baixados e agregados com sucesso. %d dias retornados.", len(df_diario))
+
+    return df_diario
+
+
+def main() -> pd.DataFrame:
+    """Fluxo de execução: baixar os dados de clima da estação meteorológica de Paranaguá."""
+    df_clima = baixar_dados_clima()
+    return df_clima
+
+
+if __name__ == "__main__":
+    df = main()
+    print(df[["DT_MEDICAO", "CHUVA"]].tail())
