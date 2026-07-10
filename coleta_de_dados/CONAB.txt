@@ -1,0 +1,9 @@
+# == Área PLnatada e Safra
+import basedosdados as bd
+
+# Para puxar os dados da CONAB usando seu projeto do Google Cloud (gratuito)
+# Requer configuração simples de um project_id do GCP
+df_conab = bd.read_table(dataset_id='br_conab_estimativa_safra',
+                         table_id='mesorregiao',
+                         billing_project_id="<SEU_PROJECT_ID_AQUI>")
+print(df_conab.head())
