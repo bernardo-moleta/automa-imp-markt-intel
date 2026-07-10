@@ -20,6 +20,7 @@ COLUNAS_ALVO = [
 
 hoje = pd.Timestamp.now().strftime("%Y-%m-%d")
 
+
 def baixar_dados_raw(caminho: str = URL_WB) -> pd.DataFrame:
     """Baixa a aba 'Monthly Prices' e remove as linhas de cabeçalho/unidade do relatório."""
     logger.info(f"Baixando dados de fertilizantes do World Bank do dia: {hoje}")
@@ -40,7 +41,9 @@ def formatar_dados_fert(df_fert_raw: pd.DataFrame) -> pd.DataFrame:
     if faltando:
         logger.warning("Colunas não encontradas no arquivo: %s", faltando)
 
-    df_fert_clean = df_fert_raw[colunas_disponiveis].rename(columns={"Unnamed: 0": "Data"})
+    df_fert_clean = df_fert_raw[colunas_disponiveis].rename(
+        columns={"Unnamed: 0": "Data"}
+    )
     return df_fert_clean
 
 
