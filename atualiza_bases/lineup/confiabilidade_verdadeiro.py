@@ -432,8 +432,8 @@ def main():
             "UNIMAR": "BI_Line Up.xlsx",
         },
         config_sop={
-            1: ["UNIMAR", "TRANSATLANTICA", "ORION"],
-            2: ["UNIMAR", "TRANSATLANTICA", "ORION"],
+            1: ["ORION"],
+            2: ["ORION"],
             3: ["ORION"],
         },
     )
