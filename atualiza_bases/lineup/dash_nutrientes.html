@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Nutrientes</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="dados_nutrientes.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    :root {
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --border: #e5e5e5;
+      --border-dark: #000000;
+      --text: #000000;
+      --muted: #666666;
+      --radius: 0px;
+
+      --color-n: #000000;
+      --color-p: #666666;
+      --color-k: #b3b3b3;
+
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-dark);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      text-transform: uppercase;
+    }
+
+    .meta-info {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    /* ── LAYOUT ── */
+    main {
+      padding: 40px 32px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ── STRIP DE SEÇÕES NPK ── */
+    .kpi-section-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-bottom: 40px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border-dark);
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 600;
+      font-family: var(--mono);
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+
+    .kpi-sub-row {
+      display: flex;
+      gap: 24px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .kpi-sub-item {
+      font-size: 12px;
+    }
+
+    .kpi-sub-item span {
+      font-family: var(--mono);
+      font-weight: 600;
+      font-size: 14px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* ── CHARTS ── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .chart-container {
+      border: 1px solid var(--border);
+      padding: 24px;
+      height: 420px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chart-container h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .chart-wrapper {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+
+    /* ── TABS ── */
+    .subtabs {
+      display: flex;
+      gap: 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    .subtab {
+      padding: 0 0 12px 0;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: color 0.2s;
+    }
+
+    .subtab:hover {
+      color: var(--text);
+    }
+
+    .subtab.active {
+      color: var(--text);
+      border-bottom-color: var(--border-dark);
+      font-weight: 600;
+    }
+
+    .subtab-content {
+      display: none;
+    }
+
+    .subtab-content.active {
+      display: block;
+    }
+
+    /* ── TABLES E FILTERS ── */
+    .filter-bar {
+      border: 1px solid var(--border);
+      padding: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    select,
+    button {
+      padding: 8px 12px;
+      border: 1px solid var(--border-dark);
+      background: var(--surface);
+      font-family: var(--sans);
+      font-size: 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--text);
+      color: var(--bg);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="brand">
+      <h1>Dashboard Nutrientes</h1>
+    </div>
+    <div class="meta-info" id="gen-date"></div>
+  </header>
+
+  <main>
+    <div class="subtabs">
+      <button class="subtab active" data-subtarget="nutrientes-visao-geral">Visão Geral</button>
+      <button class="subtab" data-subtarget="nutrientes-comparativo">Comparativo</button>
+      <button class="subtab" data-subtarget="nutrientes-analise">Análise</button>
+    </div>
+
+    <div id="nutrientes-visao-geral" class="subtab-content active">
+
+      <div class="kpi-section-container">
+
+        <div>
+          <h2 class="section-title">SIACESP (Brasil)</h2>
+
+          <div class="kpi-card" style="border-left: 3px solid var(--border-dark);">
+            <div class="kpi-label">Toneladas SIACESP Brasil</div>
+            <div class="kpi-value" id="kpi-siacesp-vol">—</div>
+            <div class="kpi-sub-row">
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-n" style="color:var(--color-n);">—</span> Nitrogênio
+                (N)</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-p" style="color:var(--color-p);">—</span> Fósforo (P)
+              </div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-k" style="color:var(--color-k);">—</span> Potássio (K)
+              </div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Fórmula Média</div>
+            <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-n"
+                  style="color:var(--color-n); font-size:20px;">—</span> Tons</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-p"
+                  style="color:var(--color-p); font-size:20px;">—</span> Tons</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-k"
+                  style="color:var(--color-k); font-size:20px;">—</span> Tons</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="section-title">ORION (Line Up)</h2>
+
+          <div class="kpi-card" style="border-left: 3px solid var(--border-dark);">
+            <div class="kpi-label">Toneladas Line Up Brasil</div>
+            <div class="kpi-value" id="kpi-orion-vol">—</div>
+            <div class="kpi-sub-row">
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-n" style="color:var(--color-n);">—</span> Nitrogênio (N)
+              </div>
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-p" style="color:var(--color-p);">—</span> Fósforo (P)
+              </div>
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-k" style="color:var(--color-k);">—</span> Potássio (K)
+              </div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">FórmulaMédia</div>
+            <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
+              <div class="kpi-sub-item"><span id="kpi-orion-med-n"
+                  style="color:var(--color-n); font-size:20px;">—</span> Média N</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-med-p"
+                  style="color:var(--color-p); font-size:20px;">—</span> Média P</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-med-k"
+                  style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-container">
+          <h3>Composição SIACESP</h3>
+          <div class="chart-wrapper"><canvas id="chart-siacesp-nutrients"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <h3>Composição ORION (Base: SAM, UREA, MOP)</h3>
+          <div class="chart-wrapper"><canvas id="chart-orion-nutrients"></canvas></div>
+        </div>
+      </div>
+
+      <div class="chart-container" style="height: 380px;">
+        <h3>Tendência de Massas Absolutas (SIACESP)</h3>
+        <div class="chart-wrapper"><canvas id="chart-siacesp-timeline"></canvas></div>
+      </div>
+
+    </div>
+
+    <div id="nutrientes-comparativo" class="subtab-content">
+      <div class="filter-bar">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:10px; color:var(--muted); text-transform:uppercase;">Período (de)</label>
+          <select id="filter-siacesp-from">
+            <option value="">Automático</option>
+          </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:10px; color:var(--muted); text-transform:uppercase;">Período (até)</label>
+          <select id="filter-siacesp-to">
+            <option value="">Automático</option>
+          </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:10px; color:var(--muted); text-transform:uppercase;">Porto</label>
+          <select id="filter-porto">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:8px; align-items:flex-end; margin-left:auto;">
+          <button onclick="window.limparFiltrosNutrientes()">Limpar</button>
+          <button class="primary" onclick="window.aplicarFiltrosNutrientes()">Aplicar</button>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border); overflow-x:auto;">
+        <table>
+          <thead style="background:#f9f9f9;">
+            <tr>
+              <th>Período</th>
+              <th style="text-align:right;">Volume (t)</th>
+              <th style="text-align:right;">Massa N (t)</th>
+              <th style="text-align:right;">% N</th>
+              <th style="text-align:right;">Massa P (t)</th>
+              <th style="text-align:right;">% P</th>
+              <th style="text-align:right;">Massa K (t)</th>
+              <th style="text-align:right;">% K</th>
+            </tr>
+          </thead>
+          <tbody id="comparison-table-body">
+            <tr>
+              <td colspan="8" style="padding:24px; text-align:center;">Carregando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="nutrientes-analise" class="subtab-content">
+      <div class="charts-grid">
+        <div class="chart-container">
+          <h3>Nutrientes por Produto (SIACESP)</h3>
+          <div class="chart-wrapper"><canvas id="chart-siacesp-products"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <h3>Volume por Produto (SIACESP)</h3>
+          <div class="chart-wrapper"><canvas id="chart-siacesp-volume-products"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-container" style="height:400px;">
+        <h3>Nutrientes por Produto (ORION)</h3>
+        <div class="chart-wrapper"><canvas id="chart-orion-products"></canvas></div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    window.nutrientCharts = {};
+    document.getElementById('gen-date').textContent = new Date().toLocaleString('pt-BR');
+
+    window.formatNumberNutr = (num, decimals = 0) => {
+      return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    };
+
+    window.destroyChartNutr = (chartId) => {
+      if (window.nutrientCharts[chartId]) window.nutrientCharts[chartId].destroy();
+    };
+
+    const commonChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { font: { family: "'Inter', sans-serif" }, color: '#000' } },
+        tooltip: {
+          backgroundColor: '#000', titleFont: { family: "'Inter', sans-serif" }, bodyFont: { family: "'JetBrains Mono', monospace" }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: "'Inter', sans-serif" } } },
+        y: { border: { dash: [4, 4] }, ticks: { font: { family: "'JetBrains Mono', monospace" } } }
+      }
+    };
+
+    window.calcularKPIsNutrientes = () => {
+      if (typeof nutrientesData === 'undefined') return;
+      const { siacesp, orion, meta } = nutrientesData;
+
+      // ---- SIACESP (Standby) ----
+      const totalSiacesp = siacesp.reduce((s, r) => s + r.volume, 0);
+      const mN = siacesp.reduce((s, r) => s + r.massa_n, 0);
+      const mP = siacesp.reduce((s, r) => s + r.massa_p, 0);
+      const mK = siacesp.reduce((s, r) => s + r.massa_k, 0);
+      const totalMassa = mN + mP + mK;
+
+      document.getElementById('kpi-siacesp-vol').textContent = window.formatNumberNutr(totalSiacesp, 1);
+      document.getElementById('kpi-siacesp-pct-n').textContent = totalMassa > 0 ? (mN / totalMassa * 100).toFixed(1) + '%' : '0%';
+      document.getElementById('kpi-siacesp-pct-p').textContent = totalMassa > 0 ? (mP / totalMassa * 100).toFixed(1) + '%' : '0%';
+      document.getElementById('kpi-siacesp-pct-k').textContent = totalMassa > 0 ? (mK / totalMassa * 100).toFixed(1) + '%' : '0%';
+
+      document.getElementById('kpi-siacesp-med-n').textContent = totalSiacesp > 0 ? window.formatNumberNutr(mN / totalSiacesp, 2) : '0';
+      document.getElementById('kpi-siacesp-med-p').textContent = totalSiacesp > 0 ? window.formatNumberNutr(mP / totalSiacesp, 2) : '0';
+      document.getElementById('kpi-siacesp-med-k').textContent = totalSiacesp > 0 ? window.formatNumberNutr(mK / totalSiacesp, 2) : '0';
+
+      // ---- ORION (Nova lógica DAX) ----
+      // 1. Isolar a extração mais recente do Line Up (evita duplicidade do histórico de posições)
+      const ultimaPosicao = meta.orion_posicao_padrao;
+      let orionLast = orion.filter(r => r.pos === ultimaPosicao);
+
+      // 2. Aplicar a janela de meses (Ex: Junho a Julho) para espelhar a tela do BI
+      orionLast = orionLast.filter(r =>
+        r.etbYm >= meta.orion_de_padrao && r.etbYm <= meta.orion_ate_padrao
+      );
+
+      // 1. Z_TOTAL QTD ORION (Denominador universal para diluição)
+      const z_total_qtd_orion = orionLast.reduce((acc, r) => acc + r.qtty, 0);
+
+      // 2. Fórmulas Isoladas para SAM, UREA e MOP, MAP, SSP, TSP, NP
+      const orion_tons_sam = orionLast.filter(r => r.produto === 'SAM').reduce((acc, r) => acc + r.qtty, 0);
+      const orion_pontos_n_sam = orion_tons_sam * 0.21;
+
+      const orion_tons_urea = orionLast.filter(r => r.produto === 'UREA').reduce((acc, r) => acc + r.qtty, 0);
+      const orion_pontos_n_urea = orion_tons_urea * 0.46;
+
+      const orion_tons_mop = orionLast.filter(r => r.produto === 'MOP').reduce((acc, r) => acc + r.qtty, 0);
+      const orion_pontos_k_mop = orion_tons_mop * 0.60;
+
+      const orion_tons_map = orionLast.filter(r => r.produto === 'MAP').reduce((acc, r) => acc + r.qtty, 0);
+      const orion_pontos_p_map = orion_tons_map * 0.52;
+
+      const orion_tons_np = orionLast.filter(r => r.produto === 'NP').reduce((acc, r) => acc + r.qtty, 0);
+      const orion_pontos_p_np = orion_tons_np * 0.42;
+      
+      const orion_tons_ssp = orionLast.filter(r => r.produto === 'SSP').reduce((acc, r) => acc + r.qtty, 0);
+      const orion_pontos_p_ssp = orion_tons_ssp * 0.20;
+
+      const orion_tons_tsp = orionLast.filter(r => r.produto === 'TSP').reduce((acc, r) => acc + r.qtty, 0);
+      const orion_pontos_p_tsp = orion_tons_tsp * 0.45;
+      
+      
+
+      // 3. Totalizadores de Massa para o Período
+      const orion_total_pontos_n = orion_pontos_n_sam + orion_pontos_n_urea;
+      const orion_total_pontos_p = orion_pontos_p_map + orion_pontos_p_np + orion_pontos_p_ssp + orion_pontos_p_tsp;
+      const orion_total_pontos_k = orion_pontos_k_mop;
+      const orion_total_massa = orion_total_pontos_n + orion_total_pontos_k;
+
+      document.getElementById('kpi-orion-vol').textContent = window.formatNumberNutr(z_total_qtd_orion, 1);
+
+      // Percentuais de representatividade da massa
+      document.getElementById('kpi-orion-pct-n').textContent = orion_total_massa > 0 ? (orion_total_pontos_n / orion_total_massa * 100).toFixed(1) + '%' : '0%';
+      document.getElementById('kpi-orion-pct-p').textContent = orion_total_massa > 0 ? (orion_total_pontos_p / orion_total_massa * 100).toFixed(1) + '%' : '0%';
+      document.getElementById('kpi-orion-pct-k').textContent = orion_total_massa > 0 ? (orion_total_pontos_k / orion_total_massa * 100).toFixed(1) + '%' : '0%';
+
+      // 4. Média Ponderada ORION formatada em percentual visual (* 100)
+      const average_pontos_n = z_total_qtd_orion > 0 ? (orion_total_pontos_n / z_total_qtd_orion) * 100 : 0;
+      const average_pontos_p = z_total_qtd_orion > 0 ? (orion_total_pontos_p / z_total_qtd_orion) * 100 : 0;
+      const average_pontos_k = z_total_qtd_orion > 0 ? (orion_total_pontos_k / z_total_qtd_orion) * 100 : 0;
+
+      document.getElementById('kpi-orion-med-n').textContent = window.formatNumberNutr(average_pontos_n) + '%';
+      document.getElementById('kpi-orion-med-p').textContent = window.formatNumberNutr(average_pontos_p) + '%';
+      document.getElementById('kpi-orion-med-k').textContent = window.formatNumberNutr(average_pontos_k) + '%';
+    };
+
+    window.renderChartsSiacesp = () => {
+      const { siacesp } = nutrientesData;
+      const mN = siacesp.reduce((s, r) => s + r.massa_n, 0);
+      const mP = siacesp.reduce((s, r) => s + r.massa_p, 0);
+      const mK = siacesp.reduce((s, r) => s + r.massa_k, 0);
+      const total = mN + mP + mK;
+
+      window.destroyChartNutr('chart-siacesp-nutrients');
+      window.nutrientCharts['chart-siacesp-nutrients'] = new Chart(document.getElementById('chart-siacesp-nutrients'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Nitrogênio', 'Fósforo', 'Potássio'],
+          datasets: [{
+            data: [total > 0 ? (mN / total * 100).toFixed(1) : 0, total > 0 ? (mP / total * 100).toFixed(1) : 0, total > 0 ? (mK / total * 100).toFixed(1) : 0],
+            backgroundColor: ['#000000', '#666666', '#b3b3b3'],
+            borderWidth: 1, borderColor: '#ffffff'
+          }]
+        },
+        options: { ...commonChartOptions, scales: { x: { display: false }, y: { display: false } } }
+      });
+
+      const byMonth = {};
+      siacesp.forEach(r => {
+        if (!byMonth[r.ym]) byMonth[r.ym] = { n: 0, p: 0, k: 0 };
+        byMonth[r.ym].n += r.massa_n; byMonth[r.ym].p += r.massa_p; byMonth[r.ym].k += r.massa_k;
+      });
+
+      const months = Object.keys(byMonth).sort();
+      window.destroyChartNutr('chart-siacesp-timeline');
+      window.nutrientCharts['chart-siacesp-timeline'] = new Chart(document.getElementById('chart-siacesp-timeline'), {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: [
+            { label: 'N', data: months.map(m => byMonth[m].n), borderColor: '#000', borderWidth: 2, tension: 0, pointRadius: 0 },
+            { label: 'P', data: months.map(m => byMonth[m].p), borderColor: '#666', borderWidth: 2, tension: 0, pointRadius: 0 },
+            { label: 'K', data: months.map(m => byMonth[m].k), borderColor: '#b3b3b3', borderWidth: 2, tension: 0, pointRadius: 0 }
+          ]
+        },
+        options: commonChartOptions
+      });
+
+      const byProduct = {};
+      siacesp.forEach(r => {
+        if (!byProduct[r.produto]) byProduct[r.produto] = { n: 0, p: 0, k: 0, vol: 0 };
+        byProduct[r.produto].n += r.massa_n; byProduct[r.produto].p += r.massa_p; byProduct[r.produto].k += r.massa_k;
+        byProduct[r.produto].vol += r.volume;
+      });
+      const produtos = Object.keys(byProduct).sort();
+
+      window.destroyChartNutr('chart-siacesp-products');
+      window.nutrientCharts['chart-siacesp-products'] = new Chart(document.getElementById('chart-siacesp-products'), {
+        type: 'bar',
+        data: {
+          labels: produtos,
+          datasets: [
+            { label: 'N', data: produtos.map(p => byProduct[p].n), backgroundColor: '#000' },
+            { label: 'P', data: produtos.map(p => byProduct[p].p), backgroundColor: '#666' },
+            { label: 'K', data: produtos.map(p => byProduct[p].k), backgroundColor: '#b3b3b3' }
+          ]
+        },
+        options: commonChartOptions
+      });
+
+      window.destroyChartNutr('chart-siacesp-volume-products');
+      window.nutrientCharts['chart-siacesp-volume-products'] = new Chart(document.getElementById('chart-siacesp-volume-products'), {
+        type: 'bar',
+        data: { labels: produtos, datasets: [{ label: 'Volume', data: produtos.map(p => byProduct[p].vol), backgroundColor: '#e5e5e5', borderColor: '#000', borderWidth: 1 }] },
+        options: { ...commonChartOptions, indexAxis: 'y' }
+      });
+    };
+
+    window.renderChartsOrion = () => {
+      const { orion, meta } = nutrientesData;
+      const orionLast = orion.filter(r => r.etbYm === meta.orion_ate_padrao);
+
+      const tons_sam = orionLast.filter(r => r.produto === 'SAM').reduce((acc, r) => acc + r.qtty, 0);
+      const tons_urea = orionLast.filter(r => r.produto === 'UREA').reduce((acc, r) => acc + r.qtty, 0);
+      const tons_mop = orionLast.filter(r => r.produto === 'MOP').reduce((acc, r) => acc + r.qtty, 0);
+      const tons_map = orionLast.filter(r => r.produto === 'MAP').reduce((acc, r) => acc + r.qtty, 0);
+      const tons_np = orionLast.filter(r => r.produto === 'NP').reduce((acc, r) => acc + r.qtty, 0);
+      const tons_ssp = orionLast.filter(r => r.produto === 'SSP').reduce((acc, r) => acc + r.qtty, 0);
+      const tons_tsp = orionLast.filter(r => r.produto === 'TSP').reduce((acc, r) => acc + r.qtty, 0);
+
+      const oN = (tons_sam * 0.21) + (tons_urea * 0.46);
+      const oP = (tons_map * 0.52) + (tons_np * 0.42) + (tons_ssp * 0.2) + (tons_tsp * 0.45);
+      const oK = (tons_mop * 0.60);
+      const total = oN + oP + oK;
+
+      window.destroyChartNutr('chart-orion-nutrients');
+      window.nutrientCharts['chart-orion-nutrients'] = new Chart(document.getElementById('chart-orion-nutrients'), {
+        type: 'doughnut',
+        data: {
+          labels: ['N', 'P', 'K'],
+          datasets: [{
+            data: [total > 0 ? (oN / total * 100).toFixed(1) : 0, 0, total > 0 ? (oK / total * 100).toFixed(1) : 0],
+            backgroundColor: ['#000000', '#666666', '#b3b3b3'], borderWidth: 1, borderColor: '#ffffff'
+          }]
+        },
+        options: { ...commonChartOptions, scales: { x: { display: false }, y: { display: false } } }
+      });
+
+      const byProduct = {
+        'SAM': {n: tons_sam * 0.21, p: 0, k: 0 },
+        'UREA': {n: tons_urea * 0.46, p: 0, k: 0 },
+        'MOP': {n: 0, p: 0, k: tons_mop * 0.60 },
+        'MAP': {n: tons_map * 0.52, p: 0, k:0},
+        'NP': {n:tons_np * 0., p:0, k:0},
+        'SSP': {n:tons_ssp * 0.2, p:0, k:0},
+        'TSP': {n:tons_tsp * 0.45, p:0, k:0}
+      };
+
+      const produtos = ['SAM', 'UREA', 'MOP', 'MAP', 'NP', 'SSP', 'TSP'];
+
+      window.destroyChartNutr('chart-orion-products');
+      window.nutrientCharts['chart-orion-products'] = new Chart(document.getElementById('chart-orion-products'), {
+        type: 'bar',
+        data: {
+          labels: produtos,
+          datasets: [
+            { label: 'N', data: produtos.map(p => byProduct[p].n), backgroundColor: '#000' },
+            { label: 'P', data: produtos.map(p => byProduct[p].p), backgroundColor: '#666' },
+            { label: 'K', data: produtos.map(p => byProduct[p].k), backgroundColor: '#b3b3b3'}
+          ]
+        },
+        options: commonChartOptions
+      });
+    };
+
+    window.populateFiltrosNutrientes = () => {
+      const { meta } = nutrientesData;
+      const sFrom = document.getElementById('filter-siacesp-from');
+      const sTo = document.getElementById('filter-siacesp-to');
+      const sPorto = document.getElementById('filter-porto');
+
+      meta.siacesp_periodos.forEach(ym => {
+        sFrom.innerHTML += `<option value="${ym}">${ym}</option>`;
+        sTo.innerHTML += `<option value="${ym}">${ym}</option>`;
+      });
+      sFrom.value = meta.siacesp_de_padrao || '';
+      sTo.value = meta.siacesp_ate_padrao || '';
+
+      meta.siacesp_portos.forEach(p => sPorto.innerHTML += `<option value="${p}">${p}</option>`);
+    };
+
+    window.renderComparisonTableNutrientes = () => {
+      const { siacesp } = nutrientesData;
+      const de = document.getElementById('filter-siacesp-from').value;
+      const ate = document.getElementById('filter-siacesp-to').value;
+      const porto = document.getElementById('filter-porto').value;
+
+      let filtered = siacesp;
+      if (de) filtered = filtered.filter(r => r.ym >= de);
+      if (ate) filtered = filtered.filter(r => r.ym <= ate);
+      if (porto) filtered = filtered.filter(r => r.porto === porto);
+
+      const byMonth = {};
+      filtered.forEach(r => {
+        if (!byMonth[r.ym]) byMonth[r.ym] = { vol: 0, n: 0, p: 0, k: 0 };
+        byMonth[r.ym].vol += r.volume; byMonth[r.ym].n += r.massa_n; byMonth[r.ym].p += r.massa_p; byMonth[r.ym].k += r.massa_k;
+      });
+
+      const tbody = document.getElementById('comparison-table-body');
+      tbody.innerHTML = '';
+
+      Object.keys(byMonth).sort().forEach(ym => {
+        const d = byMonth[ym];
+        const t = d.n + d.p + d.k;
+        const pctN = t > 0 ? ((d.n / t) * 100).toFixed(1) + '%' : '—';
+        const pctP = t > 0 ? ((d.p / t) * 100).toFixed(1) + '%' : '—';
+        const pctK = t > 0 ? ((d.k / t) * 100).toFixed(1) + '%' : '—';
+
+        tbody.innerHTML += `
+          <tr>
+            <td style="font-weight:600;">${ym}</td>
+            <td style="text-align:right; font-family:var(--mono);">${window.formatNumberNutr(d.vol, 1)}</td>
+            <td style="text-align:right; font-family:var(--mono);">${window.formatNumberNutr(d.n, 1)}</td>
+            <td style="text-align:right; font-family:var(--mono);">${pctN}</td>
+            <td style="text-align:right; font-family:var(--mono);">${window.formatNumberNutr(d.p, 1)}</td>
+            <td style="text-align:right; font-family:var(--mono);">${pctP}</td>
+            <td style="text-align:right; font-family:var(--mono);">${window.formatNumberNutr(d.k, 1)}</td>
+            <td style="text-align:right; font-family:var(--mono);">${pctK}</td>
+          </tr>
+        `;
+      });
+
+      if (Object.keys(byMonth).length === 0) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum dado encontrado</td></tr>';
+    };
+
+    window.aplicarFiltrosNutrientes = () => window.renderComparisonTableNutrientes();
+    window.limparFiltrosNutrientes = () => {
+      document.getElementById('filter-siacesp-from').value = nutrientesData.meta.siacesp_de_padrao || '';
+      document.getElementById('filter-siacesp-to').value = nutrientesData.meta.siacesp_ate_padrao || '';
+      document.getElementById('filter-porto').value = '';
+      window.renderComparisonTableNutrientes();
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof nutrientesData !== 'undefined') {
+        window.calcularKPIsNutrientes();
+        window.renderChartsSiacesp();
+        window.renderChartsOrion();
+        window.populateFiltrosNutrientes();
+        window.renderComparisonTableNutrientes();
+      }
+
+      document.querySelectorAll('.subtab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          document.querySelectorAll('.subtab, .subtab-content').forEach(el => el.classList.remove('active'));
+          e.target.classList.add('active');
+          document.getElementById(e.target.dataset.subtarget).classList.add('active');
+          setTimeout(() => Object.values(window.nutrientCharts).forEach(c => c.resize()), 50);
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>

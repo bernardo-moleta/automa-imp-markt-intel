@@ -1,23 +1,16 @@
 """
 gerar_dados_nutrientes.py
 ==========================
-Le as bases BI_Importacao_Siacesp.xlsx e BI_Line_Up_ORION.xlsx, agrega os
-dados necessarios para o relatorio comparativo de pontos nutricionais
-(N, P, K) entre SIACESP e ORION, e exporta um arquivo JavaScript
-(dados_nutrientes.js) consumido pela nova aba do dashboard_comparativo.html.
-
-Uso:
-    python gerar_dados_nutrientes.py
-
-Gera:
-    dados_nutrientes.js
+Lê as bases BI_Importacao_Siacesp.xlsx e BI_Line_Up_ORION.xlsx, agrega os
+dados multiplicando o volume pela concentração para obter a massa absoluta
+dos nutrientes (N, P, K), e exporta um arquivo JavaScript.
 """
 
 import json
 import pandas as pd
 
-SIACESP_PATH = "BI_Importacao_Siacesp.xlsx"
-ORION_PATH = "BI_Line_Up_ORION.xlsx"
+SIACESP_PATH = "BI_Importacao Siacesp.xlsx"
+ORION_PATH = "BI_Line Up_ORION.xlsx" 
 OUTPUT_PATH = "dados_nutrientes.js"
 
 
@@ -31,12 +24,18 @@ def carregar_siacesp(path):
     df = df.dropna(subset=["Z_PERÍODO"])
     df["ym"] = df["Z_PERÍODO"].dt.strftime("%Y-%m")
 
+    # CÁLCULO DE MASSA ABSOLUTA: Necessário para a média ponderada no front-end
+    df["MASSA_N"] = df["VOLUME"] * df["N"]
+    df["MASSA_P"] = df["VOLUME"] * df["P2O5"]
+    df["MASSA_K"] = df["VOLUME"] * df["K20"]
+
+    # Agrupamos somando as massas absolutas em vez dos pontos/percentuais diretamente
     agg = df.groupby(["ym", "PORTO", "Y_PRODUTO PARA"], as_index=False)[
-        ["VOLUME", "N", "P2O5", "K20"]
+        ["VOLUME", "MASSA_N", "MASSA_P", "MASSA_K"]
     ].sum()
 
-    # remove linhas totalmente zeradas para reduzir o tamanho do arquivo
-    agg = agg[(agg["VOLUME"] != 0) | (agg["N"] != 0) | (agg["P2O5"] != 0) | (agg["K20"] != 0)]
+    # remove linhas totalmente zeradas
+    agg = agg[(agg["VOLUME"] != 0) | (agg["MASSA_N"] != 0) | (agg["MASSA_P"] != 0) | (agg["MASSA_K"] != 0)]
 
     registros = [
         {
@@ -44,9 +43,9 @@ def carregar_siacesp(path):
             "porto": r["PORTO"],
             "produto": r["Y_PRODUTO PARA"],
             "volume": round(float(r["VOLUME"]), 2),
-            "n": round(float(r["N"]), 2),
-            "p": round(float(r["P2O5"]), 2),
-            "k": round(float(r["K20"]), 2),
+            "massa_n": round(float(r["MASSA_N"]), 2),
+            "massa_p": round(float(r["MASSA_P"]), 2),
+            "massa_k": round(float(r["MASSA_K"]), 2),
         }
         for _, r in agg.iterrows()
     ]
@@ -91,8 +90,7 @@ def montar_meta(siacesp, orion):
     orion_produtos = sorted({r["produto"] for r in orion if r["produto"]})
 
     ultima_posicao = orion_pos[-1] if orion_pos else None
-    # Padrão de negócio: mês anterior + mês da posição mais recente
-    # (ex.: posição 2026-07-09 -> período de análise Junho/Julho)
+
     if ultima_posicao:
         ano_pos, mes_pos = map(int, ultima_posicao[:7].split("-"))
         mes_de = mes_pos - 1 if mes_pos > 1 else 12
@@ -149,8 +147,6 @@ def main():
         f.write("const nutrientesData = " + json.dumps(dados, ensure_ascii=False) + ";\n")
 
     print(f"✅ Arquivo '{OUTPUT_PATH}' gerado com sucesso!")
-    print(f"   Período SIACESP padrão: {meta['siacesp_de_padrao']} a {meta['siacesp_ate_padrao']}")
-    print(f"   ORION posição padrão: {meta['orion_posicao_padrao']} | período: {meta['orion_de_padrao']} a {meta['orion_ate_padrao']}")
 
 
 if __name__ == "__main__":
