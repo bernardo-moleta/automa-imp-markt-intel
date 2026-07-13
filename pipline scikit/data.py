@@ -1,5 +1,5 @@
 """
-PIPELINE PROFISSIONAL DE MACHINE LEARNING PARA PREVISÃO DE VOLUMES
+PIPELINE DE MACHINE LEARNING PARA PREVISÃO DE VOLUMES
 ================================================================
 Executa os 5 passos estruturados:
 1. Alinhamento Temporal (Resampling & Merging)
@@ -22,7 +22,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import TimeSeriesSplit, cross_val_score
 from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
 from sklearn.linear_model import Ridge, Lasso
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import (
+    mean_squared_error,
+    mean_absolute_error,
+    r2_score,
+    mean_absolute_percentage_error,
+)
+import xgboost as xgb
 
 # Integração com APIs
 import yfinance as yf
@@ -47,24 +53,24 @@ class ColetorDados:
 
     @staticmethod
     def baixar_frete():
-        """Coleta dados do BDRY (frete de navios)."""
+        """Coleta dados do BDRY (Breakwave Dry Bulk Shipping "preço de frete de navios")."""
         try:
             logger.info("📥 Coletando dados de frete (BDRY)...")
-            
+
             # 1. Usar history() garante uma tabela limpa e plana, sem MultiIndex
             ticker = yf.Ticker("BDRY")
             df_frete = ticker.history(start="2020-01-01")
-            
+
             # 2. Resetar o index e renomear
             df_frete = df_frete.reset_index()
             df_frete = df_frete.rename(columns={"Date": "Data", "Close": "Frete"})
-            
+
             # 3. Remover o Fuso Horário (Timezone) para casar perfeitamente com o SIACESP
-            df_frete['Data'] = pd.to_datetime(df_frete['Data']).dt.tz_localize(None)
-            
+            df_frete["Data"] = pd.to_datetime(df_frete["Data"]).dt.tz_localize(None)
+
             df_frete = df_frete[["Data", "Frete"]]
             logger.info(f"✅ Frete: {len(df_frete)} registros")
-            
+
             return df_frete
         except Exception as e:
             logger.error(f"❌ Erro ao coletar frete: {e}")
@@ -102,7 +108,7 @@ class ColetorDados:
         except Exception as e:
             logger.error(f"❌ Erro ao coletar câmbio: {e}")
             return None
-        
+
     @staticmethod
     def baixar_precos_fertilizantes(caminho: str):
         try:
@@ -114,22 +120,27 @@ class ColetorDados:
             df_precos.columns = df_precos.columns.str.strip()
 
             # 2. Detectar e renomear coluna de data
-            col_data = next((c for c in ["Data", "data", "Date", "DATE"] if c in df_precos.columns), None)
+            col_data = next(
+                (c for c in ["Data", "data", "Date", "DATE"] if c in df_precos.columns),
+                None,
+            )
             if col_data is None:
                 raise ValueError("Não encontrei uma coluna de data no CSV.")
-            
+
             df_precos = df_precos.rename(columns={col_data: "Data"})
 
             # Ajuste de formato de data (ex: 1960M01 -> 1960-01)
-            df_precos["Data"] = df_precos["Data"].astype(str).str.replace("M", "-", regex=False)
+            df_precos["Data"] = (
+                df_precos["Data"].astype(str).str.replace("M", "-", regex=False)
+            )
             df_precos["Data"] = pd.to_datetime(df_precos["Data"], errors="coerce")
             df_precos = df_precos.dropna(subset=["Data"])
 
             # 3. Mapeamento dos nomes reais encontrados no seu CSV
             mapeamento = {
                 "Potassium chloride **": "Potassio",
-                "Urea": "Urea", # Caso já esteja limpo
-                "Urea ": "Urea" # Caso tenha espaço
+                "Urea": "Urea",  # Caso já esteja limpo
+                "Urea ": "Urea",  # Caso tenha espaço
             }
             df_precos = df_precos.rename(columns=mapeamento)
 
@@ -141,16 +152,19 @@ class ColetorDados:
 
             # 5. Filtrar apenas colunas numéricas restantes
             colunas_preco = [
-                c for c in df_precos.columns
+                c
+                for c in df_precos.columns
                 if c != "Data" and pd.api.types.is_numeric_dtype(df_precos[c])
             ]
-            
-            df_precos = df_precos[["Data"] + colunas_preco].sort_values("Data")
-            
-            # Remove linhas onde todos os preços são NaN (opcional)
-            df_precos = df_precos.dropna(subset=colunas_preco, how='all')
 
-            logger.info(f"✅ Preços carregados: {len(df_precos)} registros | Colunas: {colunas_preco}")
+            df_precos = df_precos[["Data"] + colunas_preco].sort_values("Data")
+
+            # Remove linhas onde todos os preços são NaN (opcional)
+            df_precos = df_precos.dropna(subset=colunas_preco, how="all")
+
+            logger.info(
+                f"✅ Preços carregados: {len(df_precos)} registros | Colunas: {colunas_preco}"
+            )
             return df_precos
 
         except Exception as e:
@@ -178,7 +192,7 @@ class ColetorDados:
 
 
 class AlinhadorTemporal:
-    """Alinha dados de granularidades diferentes para a mesma frequência."""
+    """Alinha dados de granularidades diferentes para a mesma frequência, priorizando a retenção histórica."""
 
     @staticmethod
     def alinhar_dados(
@@ -187,20 +201,14 @@ class AlinhadorTemporal:
         df_cambio: pd.DataFrame = None,
         df_oni: pd.DataFrame = None,
         df_precos: pd.DataFrame = None,
-        frequencia: str = "W",  # 'D' = diário, 'W' = semanal, 'M' = mensal
+        frequencia: str = "MS",  # Mensal (Início do mês) para evitar desalinhamento de dias
     ) -> pd.DataFrame:
         """
-        Alinha todos os dados para uma frequência comum.
-
-        Args:
-            frequencia: 'D' (dia), 'W' (semana), 'M' (mês)
-
-        Returns:
-            DataFrame consolidado com todas as variáveis
+        Alinha todos os dados para uma frequência comum usando SIACESP como base soberana.
         """
         logger.info(f"🔄 Iniciando alinhamento temporal (frequência: {frequencia})...")
 
-        # Passo 1a: Agregar SIACESP para a frequência alvo
+        # Passo 1a: Agregar SIACESP para a frequência alvo (A NOSSA BASE SOBERANA)
         df_base = df_siacesp.copy()
         df_base["Data"] = pd.to_datetime(df_base["Z_PERÍODO"], errors="coerce")
         df_base = df_base.dropna(subset=["Data"])
@@ -210,116 +218,118 @@ class AlinhadorTemporal:
             df_base.set_index("Data").resample(frequencia)["VOLUME"].sum().reset_index()
         )
         df_base.columns = ["Data", "Volume_Total"]
+        logger.info(f"✓ SIACESP agregado: {len(df_base)} períodos (Base soberana até {df_base['Data'].max().strftime('%Y-%m')})")
 
-        logger.info(f"✓ SIACESP agregado: {len(df_base)} períodos")
+        # Variável para rastrear todas as colunas de mercado que precisaremos "esticar" para 2025
+        colunas_mercado = []
 
-        # Passo 1b: Processar Frete (diário → frequência alvo)
-
-
-        # ✅ CORRETO
+        # Passo 1b: Processar Frete
         if df_frete is not None and not df_frete.empty:
             try:
                 df_frete_proc = df_frete.copy()
                 df_frete_proc["Data"] = pd.to_datetime(df_frete_proc["Data"], errors="coerce")
                 df_frete_proc = df_frete_proc.dropna(subset=["Data"])
 
-                # Resample DEPOIS cria coluna, ANTES dropna
                 df_frete_proc = (
                     df_frete_proc.set_index("Data")
                     .resample(frequencia)["Frete"]
                     .mean()
-                    .reset_index()  # ← Agora 'Data' é COLUNA
+                    .reset_index()
                 )
 
+                # Mantendo df_base inalterado (Left Join)
                 df_base = pd.merge(df_base, df_frete_proc, on="Data", how="left")
+                colunas_mercado.append("Frete")
                 logger.info(f"✓ Frete alinhado: {len(df_frete_proc)} registros")
             except Exception as e:
-                logger.warning(f"⚠️  Erro ao processar Frete: {e}")
+                logger.warning(f"⚠️ Erro ao processar Frete: {e}")
 
-            # Passo 1c: Processar Câmbio (diário → frequência alvo)
-            if df_cambio is not None:
-                df_cambio["Data"] = pd.to_datetime(df_cambio["Data"], errors="coerce")
-                df_cambio = df_cambio.dropna(subset=["Data"])
-                df_cambio = (
-                    df_cambio.set_index("Data")
+        # Passo 1c: Processar Câmbio (Indentação corrigida, estava presa no Frete)
+        if df_cambio is not None and not df_cambio.empty:
+            try:
+                df_cambio_proc = df_cambio.copy()
+                df_cambio_proc["Data"] = pd.to_datetime(df_cambio_proc["Data"], errors="coerce")
+                df_cambio_proc = df_cambio_proc.dropna(subset=["Data"])
+                
+                df_cambio_proc = (
+                    df_cambio_proc.set_index("Data")
                     .resample(frequencia)["Cambio"]
                     .mean()
                     .reset_index()
                 )
-                df_base = pd.merge(df_base, df_cambio, on="Data", how="left")
+                
+                df_base = pd.merge(df_base, df_cambio_proc, on="Data", how="left")
+                colunas_mercado.append("Cambio")
                 logger.info(f"✓ Câmbio alinhado")
+            except Exception as e:
+                logger.warning(f"⚠️ Erro ao processar Câmbio: {e}")
 
-        # Passo 1d: Processar ONI (mensal → frequência alvo via forward fill)
-        # Passo 1d: Processar ONI (mensal → frequência alvo via forward fill)
-        if df_oni is not None:
+        # Passo 1d: Processar ONI
+        if df_oni is not None and not df_oni.empty:
             try:
-                # Mapeamento dos trimestres da NOAA para meses numéricos
                 mapa_meses = {
                     "DJF": 1, "JFM": 2, "FMA": 3, "MAM": 4, "AMJ": 5, "MJJ": 6,
-                    "JJA": 7, "JAS": 8, "ASO": 9, "SON": 10, "OND": 11, "NDJ": 12
+                    "JJA": 7, "JAS": 8, "ASO": 9, "SON": 10, "OND": 11, "NDJ": 12,
                 }
-                
                 df_oni_prep = df_oni.copy()
-                
-                # Traduzir as colunas da NOAA (YR e SEAS) para o padrão do seu script
-                df_oni_prep["MONTH"] = df_oni_prep["SEAS"].map(mapa_meses)
-                df_oni_prep = df_oni_prep.rename(columns={"YR": "YEAR", "ANOM": "ONI"})
-                
-                # Montar a coluna Data
-                df_oni_prep["Data"] = pd.to_datetime(
-                    df_oni_prep["YEAR"].astype(str) + "-" + 
-                    df_oni_prep["MONTH"].astype(str).str.zfill(2) + "-01"
-                )
-                df_oni_prep = df_oni_prep[["Data", "ONI"]].drop_duplicates(subset=["Data"])
-                
-                # Preencher os dias/semanas vazios usando forward fill (mantém o ONI do mês para os dias seguintes)
-                date_range = pd.date_range(start=df_base["Data"].min(), end=df_base["Data"].max(), freq=frequencia)
-                df_oni_full = pd.DataFrame({"Data": date_range})
-                df_oni_full = pd.merge(df_oni_full, df_oni_prep, on="Data", how="left")
-                df_oni_full["ONI"] = df_oni_full["ONI"].ffill().bfill()
-                
-                # Unir com a base principal
-                df_base = pd.merge(df_base, df_oni_full[["Data", "ONI"]], on="Data", how="left")
-                logger.info(f"✓ ONI alinhado via forward fill")
+                if "SEAS" in df_oni_prep.columns:
+                    df_oni_prep["MONTH"] = df_oni_prep["SEAS"].map(mapa_meses)
+                    df_oni_prep = df_oni_prep.rename(columns={"YR": "YEAR", "ANOM": "ONI"})
+                    df_oni_prep["Data"] = pd.to_datetime(
+                        df_oni_prep["YEAR"].astype(str) + "-" + df_oni_prep["MONTH"].astype(str).str.zfill(2) + "-01"
+                    )
+                    df_oni_prep = df_oni_prep[["Data", "ONI"]].drop_duplicates(subset=["Data"])
+
+                    # Alinha diretamente com a base soberana
+                    df_base = pd.merge(df_base, df_oni_prep[["Data", "ONI"]], on="Data", how="left")
+                    colunas_mercado.append("ONI")
+                    logger.info(f"✓ ONI alinhado")
             except Exception as e:
                 logger.warning(f"⚠️ Erro ao processar ONI: {e}")
-                
-                df_base = df_base.ffill().bfill()
 
-        # Passo 1e: Processar Preços de Fertilizantes (Urea/DAP/TSP/Potássio)
+        # Passo 1e: Processar Preços de Fertilizantes
         if df_precos is not None and not df_precos.empty:
             try:
                 df_precos_proc = df_precos.copy()
-                df_precos_proc["Data"] = pd.to_datetime(
-                    df_precos_proc["Data"], errors="coerce"
-                )
+                df_precos_proc["Data"] = pd.to_datetime(df_precos_proc["Data"], errors="coerce")
                 df_precos_proc = df_precos_proc.dropna(subset=["Data"])
 
-                colunas_preco = [c for c in df_precos_proc.columns if c != "Data"]
+                colunas_preco = [c for c in df_precos_proc.columns if c != "Data" and "Unnamed" not in c]
 
                 df_precos_proc = (
                     df_precos_proc.set_index("Data")
                     .resample(frequencia)[colunas_preco]
                     .mean()
-                    .ffill()  # entre publicações de preço, repete o último valor conhecido
                     .reset_index()
                 )
 
                 df_base = pd.merge(df_base, df_precos_proc, on="Data", how="left")
+                colunas_mercado.extend(colunas_preco)
 
-                # Feature de "Preço Relativo" = Preço do Fertilizante / Câmbio
-                # (indicador mais forte do que preço ou câmbio isolados)
+                # Feature de "Preço Relativo" = Preço / Câmbio
                 if "Cambio" in df_base.columns:
                     for coluna in colunas_preco:
-                        df_base[f"{coluna}_Relativo"] = (
-                            df_base[coluna] / df_base["Cambio"]
-                        )
+                        nome_relativo = f"{coluna}_Relativo"
+                        df_base[nome_relativo] = df_base[coluna] / df_base["Cambio"]
+                        colunas_mercado.append(nome_relativo)
 
-                logger.info(
-                    f"✓ Preços de fertilizantes alinhados: {colunas_preco}"
-                )
+                logger.info(f"✓ Preços de fertilizantes alinhados: {colunas_preco}")
             except Exception as e:
                 logger.warning(f"⚠️ Erro ao processar preços de fertilizantes: {e}")
+
+
+        # ============================================================================
+        # CORREÇÃO CRÍTICA: Prevenir o corte de 2025 (Forward Fill)
+        # ============================================================================
+        # Pega o último valor conhecido de mercado (Dezembro/2024) e propaga para os meses vazios de 2025.
+        # O bfill atua apenas caso a série comece vazia (ex: não temos preço no primeiro mês histórico).
+        
+        colunas_existentes = [c for c in colunas_mercado if c in df_base.columns]
+        
+        if colunas_existentes:
+            df_base[colunas_existentes] = df_base[colunas_existentes].ffill().bfill()
+
+        logger.info(f"✅ Alinhamento concluído. O histórico preservado estende-se até: {df_base['Data'].max().strftime('%Y-%m-%d')}")
 
         return df_base
 
@@ -330,109 +340,88 @@ class AlinhadorTemporal:
 
 
 class EngenhariaDeFeaturesML:
-    """Cria features defasadas e estatísticas para o modelo de ML."""
+    """Cria features defasadas e estatísticas focadas em evitar overfitting para bases pequenas."""
 
     @staticmethod
     def criar_features(
         df: pd.DataFrame,
         col_alvo: str = "Volume_Total",
-        lags_dias: List[int] = None,
+        lags_meses: List[int] = None,
         janelas_media_movel: List[int] = None,
     ) -> Tuple[pd.DataFrame, List[str]]:
-        """
-        Cria variáveis defasadas (lags) e médias móveis.
+        logger.info("🔧 Iniciando engenharia de features (Restrita para evitar Overfitting)...")
 
-        Args:
-            df: DataFrame com dados alinhados
-            col_alvo: coluna contendo o volume a prever
-            lags_dias: lista de defasagens (ex: [7, 14, 30, 60] dias)
-            janelas_media_movel: lista de janelas para média móvel
-
-        Returns:
-            DataFrame com features + lista de nomes de colunas de features
-        """
-        logger.info("🔧 Iniciando engenharia de features...")
-        
-        # Garante que as colunas não sejam MultiIndex (ex: ('Frete', '') )
         df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
-        # Remove colunas duplicadas que podem ter sido criadas no merge
         df = df.loc[:, ~df.columns.duplicated()]
 
-        if lags_dias is None:
-            lags_dias=[1, 2, 3]   # Lags de 1 trimestre a 1 ano (em meses)
+        # Configuração recomendada (1, 2, e 12 meses)
+        if lags_meses is None:
+            lags_meses = [1, 2, 12]
 
         if janelas_media_movel is None:
-            janelas_media_movel=[3, 6, 12]  # Janelas trimestrais, semestrais e anuais
+            janelas_media_movel = [3, 6, 12]
 
         df_features = df.copy()
         nomes_features = []
 
-        # Passo 2a: Criar lags (defasagens) para variáveis numéricas
-        for coluna in df_features.select_dtypes(include=[np.number]).columns:
-            if coluna == col_alvo:
-                continue  # Pular a coluna alvo por enquanto
+        # Restrição de features geradoras de lags (Mapeamento baseado nos nomes do Passo 1)
+        # Cambio = USD_BRL, Frete = BDRY, ONI = ANOM (ENSO)
+        vars_permitidas = [col_alvo, "Cambio", "Frete", "ONI"]
 
-            for lag in lags_dias:
-                nome_col = f"{coluna}_lag_{lag}"
-                df_features[nome_col] = df_features[coluna].shift(lag)
-                nomes_features.append(nome_col)
+        # Passo 2a: Criar Lags APENAS para variáveis permitidas
+        for coluna in vars_permitidas:
+            if coluna in df_features.columns:
+                for lag in lags_meses:
+                    nome_col = f"{coluna}_lag_{lag}"
+                    df_features[nome_col] = df_features[coluna].shift(lag)
+                    nomes_features.append(nome_col)
 
-        logger.info(f"  ✓ {len(lags_dias)} lags criados por variável")
+        # Passo 2b: Criar Médias Móveis APENAS para variáveis permitidas
+        for coluna in vars_permitidas:
+            if coluna in df_features.columns:
+                for janela in janelas_media_movel:
+                    nome_col = f"{coluna}_rolling_mean_{janela}"
+                    # CRÍTICO: shift(1) garante que a média de 3 meses de Jan/2024 
+                    # utiliza apenas Out, Nov e Dez/2023, evitando Data Leakage.
+                    df_features[nome_col] = (
+                        df_features[coluna].shift(1).rolling(window=janela).mean()
+                    )
+                    nomes_features.append(nome_col)
 
-        # Passo 2b: Criar médias móveis
-        for coluna in df_features.select_dtypes(include=[np.number]).columns:
-            if coluna == col_alvo:
-                continue
-
-            for janela in janelas_media_movel:
-                nome_col = f"{coluna}_rolling_mean_{janela}"
-                df_features[nome_col] = (
-                    df_features[coluna].rolling(window=janela).mean()
-                )
-                nomes_features.append(nome_col)
-
-        logger.info(
-            f"  ✓ {len(janelas_media_movel)} janelas de média móvel criadas por variável"
-        )
-
-        # Passo 2c: Adicionar features temporais (mês, dia da semana, trimestre)
+        # Passo 2c: Features Temporais Estritas (Mensal)
         df_features["Ano"] = df_features["Data"].dt.year
         df_features["Mes"] = df_features["Data"].dt.month
-        df_features["Dia_Semana"] = df_features["Data"].dt.dayofweek
         df_features["Trimestre"] = df_features["Data"].dt.quarter
-        df_features["Semana_Ano"] = df_features["Data"].dt.isocalendar().week
 
-        # Codificação cíclica do mês (Sen/Cos): o modelo entende que
-        # dezembro (12) e janeiro (1) são vizinhos, não extremos opostos.
+        # Codificação Cíclica
         df_features["Mes_Sen"] = np.sin(2 * np.pi * df_features["Mes"] / 12)
         df_features["Mes_Cos"] = np.cos(2 * np.pi * df_features["Mes"] / 12)
 
-        # Feature de "Alta Safra": marca os meses historicamente de maior
-        # importação (calculado a partir da própria série de volume).
+        # Feature de "Alta Safra" (Baseado na mediana histórica)
         media_por_mes = df_features.groupby("Mes")[col_alvo].mean()
         meses_alta_safra = media_por_mes[
             media_por_mes >= media_por_mes.median()
         ].index.tolist()
         df_features["Alta_Safra"] = df_features["Mes"].isin(meses_alta_safra).astype(int)
 
-        nomes_features.extend(
-            [
-                "Ano",
-                "Dia_Semana",
-                "Trimestre",
-                "Semana_Ano",
-                "Mes_Sen",
-                "Mes_Cos",
-                "Alta_Safra",
-            ]
-        )
-        logger.info(f"  ✓ Features temporais criadas (incl. ciclo Sen/Cos e Alta_Safra)")
+        nomes_features.extend([
+            "Ano",
+            "Trimestre",
+            "Mes_Sen",
+            "Mes_Cos",
+            "Alta_Safra",
+        ])
 
-        # Remover NaNs gerados pelos lags e médias móveis
+        # Remover linhas com NaNs gerados pelos lags de 12 meses
         df_features = df_features.dropna()
 
+        # Omitimos Dia_Semana e Semana_Ano propositalmente
+        if "Mes" in df_features.columns and "Mes" not in nomes_features:
+            # Mantém a coluna Mês para funções de predição futura, mas remove das features de treino
+            pass 
+
         logger.info(
-            f"✅ Features engenheiradas: {len(nomes_features)} variáveis | {len(df_features)} amostras válidas"
+            f"✅ Features geradas: {len(nomes_features)} variáveis | {len(df_features)} amostras válidas"
         )
         return df_features, nomes_features
 
@@ -497,7 +486,7 @@ class DivisorTemporalML:
 
 
 class TreinadorModelos:
-    """Treina múltiplos modelos e seleciona o melhor."""
+    """Treina e compara RandomForest e XGBoost priorizando a métrica MAPE."""
 
     @staticmethod
     def treinar_e_avaliar(
@@ -507,150 +496,87 @@ class TreinadorModelos:
         y_test: pd.Series,
         scaler: StandardScaler = None,
     ) -> Dict[str, Dict]:
-        """
-        Treina RandomForest e HistGradientBoosting, retorna métricas.
-
-        Returns:
-            Dicionário com resultados de cada modelo
-        """
+        
         logger.info("\n🤖 TREINANDO MODELOS DE APRENDIZADO DE MÁQUINA")
         logger.info("=" * 60)
 
-        # Normalizar features
+        # Modelos baseados em árvores não requerem StandardScaler estritamente, 
+        # mas mantemos a interface para integridade do pipeline original.
         if scaler is None:
             scaler = StandardScaler()
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
-        else:
-            X_train_scaled = scaler.transform(X_train)
-            X_test_scaled = scaler.transform(X_test)
 
         resultados = {}
 
+        # ---------------------------------------------------------
         # Modelo 1: RandomForestRegressor
+        # Parâmetros restritivos (max_depth baixo) devido a poucas observações
+        # ---------------------------------------------------------
         logger.info("\n1️⃣  Treinando RandomForestRegressor...")
         rf = RandomForestRegressor(
-            n_estimators=200,
-            max_depth=20,
-            min_samples_split=5,
+            n_estimators=150,
+            max_depth=5,            # Reduzido para evitar overfitting em 65 linhas
+            min_samples_split=4,
             min_samples_leaf=2,
             random_state=42,
             n_jobs=-1,
-            verbose=0,
         )
         rf.fit(X_train, y_train)
 
         y_pred_rf = rf.predict(X_test)
+        mape_rf = mean_absolute_percentage_error(y_test, y_pred_rf)
         rmse_rf = np.sqrt(mean_squared_error(y_test, y_pred_rf))
-        mae_rf = mean_absolute_error(y_test, y_pred_rf)
-        r2_rf = r2_score(y_test, y_pred_rf)
 
         resultados["RandomForest"] = {
             "modelo": rf,
             "predicoes": y_pred_rf,
+            "mape": mape_rf,
             "rmse": rmse_rf,
-            "mae": mae_rf,
-            "r2": r2_rf,
-            "feature_importance": (
-                dict(zip(X_train.columns, rf.feature_importances_))
-                if hasattr(rf, "feature_importances_")
-                else {}
-            ),
+            "feature_importance": dict(zip(X_train.columns, rf.feature_importances_)),
         }
 
+        logger.info(f"  ✓ MAPE: {mape_rf:.2%}")
         logger.info(f"  ✓ RMSE: {rmse_rf:,.2f}")
-        logger.info(f"  ✓ MAE:  {mae_rf:,.2f}")
-        logger.info(f"  ✓ R²:   {r2_rf:.4f}")
 
-        # Modelo 2: HistGradientBoostingRegressor
-        logger.info("\n2️⃣  Treinando HistGradientBoostingRegressor...")
-        hgb = HistGradientBoostingRegressor(
-            max_iter=200, max_depth=10, learning_rate=0.1, random_state=42, verbose=0
+        # ---------------------------------------------------------
+        # Modelo 2: XGBoost Regressor
+        # ---------------------------------------------------------
+        logger.info("\n2️⃣  Treinando XGBoost...")
+        xgb_model = xgb.XGBRegressor(
+            n_estimators=100,
+            max_depth=3,            # Árvores rasas protegem contra overfitting
+            learning_rate=0.05,     # Aprendizado mais lento e robusto
+            subsample=0.8,          # Utiliza 80% das amostras por árvore
+            colsample_bytree=0.8,   # Utiliza 80% das features por árvore
+            random_state=42,
+            n_jobs=-1
         )
-        hgb.fit(X_train, y_train)
+        
+        xgb_model.fit(X_train, y_train)
+        y_pred_xgb = xgb_model.predict(X_test)
+        
+        mape_xgb = mean_absolute_percentage_error(y_test, y_pred_xgb)
+        rmse_xgb = np.sqrt(mean_squared_error(y_test, y_pred_xgb))
 
-        y_pred_hgb = hgb.predict(X_test)
-        rmse_hgb = np.sqrt(mean_squared_error(y_test, y_pred_hgb))
-        mae_hgb = mean_absolute_error(y_test, y_pred_hgb)
-        r2_hgb = r2_score(y_test, y_pred_hgb)
-
-        resultados["HistGradientBoosting"] = {
-            "modelo": hgb,
-            "predicoes": y_pred_hgb,
-            "rmse": rmse_hgb,
-            "mae": mae_hgb,
-            "r2": r2_hgb,
-            "feature_importance": (
-                dict(zip(X_train.columns, hgb.feature_importances_))
-                if hasattr(hgb, "feature_importances_")
-                else {}
-            ),
+        resultados["XGBoost"] = {
+            "modelo": xgb_model,
+            "predicoes": y_pred_xgb,
+            "mape": mape_xgb,
+            "rmse": rmse_xgb,
+            "feature_importance": dict(zip(X_train.columns, xgb_model.feature_importances_)),
         }
 
-        logger.info(f"  ✓ RMSE: {rmse_hgb:,.2f}")
-        logger.info(f"  ✓ MAE:  {mae_hgb:,.2f}")
-        logger.info(f"  ✓ R²:   {r2_hgb:.4f}")
+        logger.info(f"  ✓ MAPE: {mape_xgb:.2%}")
+        logger.info(f"  ✓ RMSE: {rmse_xgb:,.2f}")
 
-        # Modelo 3: Ridge Regression (regularizado - ideal para poucas amostras)
-        logger.info("\n3️⃣  Treinando Ridge Regression...")
-        ridge = Ridge(alpha=1.0)
-        ridge.fit(X_train_scaled, y_train)
-
-        y_pred_ridge = ridge.predict(X_test_scaled)
-        rmse_ridge = np.sqrt(mean_squared_error(y_test, y_pred_ridge))
-        mae_ridge = mean_absolute_error(y_test, y_pred_ridge)
-        r2_ridge = r2_score(y_test, y_pred_ridge)
-
-        resultados["Ridge"] = {
-            "modelo": ridge,
-            "predicoes": y_pred_ridge,
-            "rmse": rmse_ridge,
-            "mae": mae_ridge,
-            "r2": r2_ridge,
-            "feature_importance": (
-                dict(zip(X_train.columns, np.abs(ridge.coef_)))
-                if hasattr(ridge, "coef_")
-                else {}
-            ),
-        }
-
-        logger.info(f"  ✓ RMSE: {rmse_ridge:,.2f}")
-        logger.info(f"  ✓ MAE:  {mae_ridge:,.2f}")
-        logger.info(f"  ✓ R²:   {r2_ridge:.4f}")
-
-        # Modelo 4: Lasso Regression (regularizado com seleção de variáveis)
-        logger.info("\n4️⃣  Treinando Lasso Regression...")
-        lasso = Lasso(alpha=1.0, max_iter=10000)
-        lasso.fit(X_train_scaled, y_train)
-
-        y_pred_lasso = lasso.predict(X_test_scaled)
-        rmse_lasso = np.sqrt(mean_squared_error(y_test, y_pred_lasso))
-        mae_lasso = mean_absolute_error(y_test, y_pred_lasso)
-        r2_lasso = r2_score(y_test, y_pred_lasso)
-
-        resultados["Lasso"] = {
-            "modelo": lasso,
-            "predicoes": y_pred_lasso,
-            "rmse": rmse_lasso,
-            "mae": mae_lasso,
-            "r2": r2_lasso,
-            "feature_importance": (
-                dict(zip(X_train.columns, np.abs(lasso.coef_)))
-                if hasattr(lasso, "coef_")
-                else {}
-            ),
-        }
-
-        logger.info(f"  ✓ RMSE: {rmse_lasso:,.2f}")
-        logger.info(f"  ✓ MAE:  {mae_lasso:,.2f}")
-        logger.info(f"  ✓ R²:   {r2_lasso:.4f}")
-
-        # Seleção automática do melhor modelo
-        melhor = min(resultados.items(), key=lambda x: x[1]["rmse"])
-        logger.info(f"\n🏆 MELHOR MODELO: {melhor[0]} (RMSE: {melhor[1]['rmse']:,.2f})")
+        # ---------------------------------------------------------
+        # Seleção automática pelo melhor MAPE
+        # ---------------------------------------------------------
+        melhor = min(resultados.items(), key=lambda x: x[1]["mape"])
+        logger.info(f"\n🏆 MELHOR MODELO: {melhor[0]} (MAPE: {melhor[1]['mape']:.2%})")
 
         return resultados, scaler
-
 
 # ============================================================================
 # PASSO 5: EXPORTAÇÃO E ORQUESTRAÇÃO
@@ -668,16 +594,6 @@ class ExportadorPrevisoes:
         dias_futuro: int = 30,
         frequencia: str = "W",
     ) -> pd.DataFrame:
-        """
-        Gera previsões para os próximos períodos.
-
-        Args:
-            dias_futuro: Quantos períodos adiante prever
-            frequencia: 'D', 'W', ou 'M'
-
-        Returns:
-            DataFrame com previsões futuras
-        """
         logger.info(
             f"\n🔮 Gerando previsões para os próximos {dias_futuro} períodos..."
         )
@@ -686,7 +602,6 @@ class ExportadorPrevisoes:
         X_ultima = X_ultimo.iloc[-1:].copy()
 
         # Recalcular quais meses são de "Alta Safra" a partir do histórico
-        # completo (mesma lógica usada na engenharia de features)
         meses_alta_safra = []
         if "Mes" in X_ultimo.columns and "Volume_Total" in X_ultimo.columns:
             media_por_mes = X_ultimo.groupby("Mes")["Volume_Total"].mean()
@@ -703,31 +618,36 @@ class ExportadorPrevisoes:
         data_base = X_ultimo["Data"].iloc[-1]
 
         for i in range(dias_futuro):
-            # Avançar data conforme frequência
+            # Avançar data conforme frequência (Ajustado para meses literais)
             if frequencia == "D":
                 data_futura = data_base + timedelta(days=i + 1)
             elif frequencia == "W":
                 data_futura = data_base + timedelta(weeks=i + 1)
-            else:  # 'M'
-                data_futura = data_base + timedelta(days=30 * (i + 1))
+            else:  # 'M' ou 'MS'
+                # Usa pd.DateOffset para pular meses corretos (evita bugs com fev/meses de 31 dias)
+                data_futura = data_base + pd.DateOffset(months=i + 1)
 
-            # Atualizar features temporais
+            # Atualizar features temporais (Sem Dia_Semana e Semana_Ano)
             mes_futuro = data_futura.month
             X_ultima_numeric["Ano"] = data_futura.year
-            X_ultima_numeric["Dia_Semana"] = data_futura.dayofweek
+            X_ultima_numeric["Mes"] = mes_futuro
             X_ultima_numeric["Trimestre"] = data_futura.quarter
-            X_ultima_numeric["Semana_Ano"] = data_futura.isocalendar().week
             X_ultima_numeric["Mes_Sen"] = np.sin(2 * np.pi * mes_futuro / 12)
             X_ultima_numeric["Mes_Cos"] = np.cos(2 * np.pi * mes_futuro / 12)
+            
             if "Alta_Safra" in X_ultima_numeric.columns:
                 X_ultima_numeric["Alta_Safra"] = int(mes_futuro in meses_alta_safra)
 
-            # Prever (modelos lineares - Ridge/Lasso - foram treinados com
-            # dados escalados; RF/HGB usam os dados crus)
-            if hasattr(modelo, "coef_"):
+            # Garantir exatamente a mesma ordem de colunas do treinamento para o XGBoost
+            if hasattr(modelo, "feature_names_in_"):
+                X_ultima_numeric = X_ultima_numeric[modelo.feature_names_in_]
+
+            # Prever
+            if hasattr(modelo, "coef_") and scaler is not None:
                 X_input = scaler.transform(X_ultima_numeric)
             else:
                 X_input = X_ultima_numeric
+                
             pred = modelo.predict(X_input)[0]
 
             previsoes_futuro.append(
@@ -752,7 +672,6 @@ class ExportadorPrevisoes:
         """Exporta resultados em JSON para consumo por dashboards."""
         logger.info(f"\n📤 Exportando resultados para {arquivo_saida}...")
 
-        # Preparar estrutura de exportação
         dados_exportacao = {
             "timestamp": datetime.now().isoformat(),
             "modelos_treinados": list(resultados_modelos.keys()),
@@ -763,22 +682,18 @@ class ExportadorPrevisoes:
 
         for nome_modelo, resultado in resultados_modelos.items():
             dados_exportacao["metricas"][nome_modelo] = {
-                "rmse": float(resultado["rmse"]),
-                "mae": float(resultado["mae"]),
-                "r2": float(resultado["r2"]),
+                # Mapeado para lidar com o MAPE caso seja o modelo do XGBoost/RandomForest
+                "mape": float(resultado.get("mape", 0.0)),
+                "rmse": float(resultado.get("rmse", 0.0)),
             }
 
-            # Ordenar features por importância
             features_sorted = sorted(
                 resultado["feature_importance"].items(),
                 key=lambda x: x[1],
                 reverse=True,
-            )[
-                :10
-            ]  # Top 10
+            )[:10]
             dados_exportacao["feature_importance"][nome_modelo] = dict(features_sorted)
 
-        # Salvar JSON
         with open(arquivo_saida, "w", encoding="utf-8") as f:
             json.dump(dados_exportacao, f, indent=2, ensure_ascii=False, default=str)
 
@@ -803,7 +718,7 @@ def executar_pipeline_completo(
     """
 
     print("\n" + "=" * 80)
-    print("🚀 PIPELINE DE MACHINE LEARNING PARA PREVISÃO DE VOLUMES")
+    print("PIPELINE DE MACHINE LEARNING PARA PREVISÃO DE VOLUMES")
     print("=" * 80 + "\n")
 
     # ========== PASSO 0: COLETA DE DADOS ==========
@@ -903,7 +818,7 @@ def executar_pipeline_completo(
     print(f"  • Features criadas: {len(nomes_features)}")
     print(f"  • Melhor modelo: {melhor_modelo_nome}")
     print(f"  • RMSE: {resultados_modelos[melhor_modelo_nome]['rmse']:,.2f}")
-    print(f"  • R² Score: {resultados_modelos[melhor_modelo_nome]['r2']:.4f}")
+    print(f"  • MAPE Score: {resultados_modelos[melhor_modelo_nome]['mape']:.2%}")
     print(f"\n📈 Previsões:")
     print(f"  • Períodos previstos: {dias_previsao}")
     print(f"  • Volume médio previsto: {df_previsto['Volume_Previsto'].mean():,.2f}")
@@ -939,6 +854,6 @@ if __name__ == "__main__":
         caminho_siacesp=r"C:\Users\BERNARDOJULIODEALMEI\automa-imp-markt-intel\atualiza_bases\lineup\BI_Importacao Siacesp.xlsx",
         caminho_precos_fert=r"C:\Users\BERNARDOJULIODEALMEI\automa-imp-markt-intel\atualiza_bases\lineup\dados_preços_fert.csv",
         frequencia="MS",  # MENSAL
-        percentual_treino=0.90,
-        dias_previsao=6,
+        percentual_treino=0.80,
+        dias_previsao=6,  # nesse caso são meses (6 meses)
     )
