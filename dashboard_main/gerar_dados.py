@@ -6,6 +6,12 @@ from prophet import Prophet
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
+from datetime import date, timedelta
+
+
+hoje = date.today()
+quinta_feira = hoje + timedelta(days=(3 - hoje.weekday()))
+quinta_feira_format = quinta_feira.strftime('%d-%m-%Y')
 
 # Ignora avisos de tipos mistos que podem aparecer ao ler arquivos CSV grandes
 warnings.filterwarnings("ignore")
@@ -267,7 +273,7 @@ def gerar_dados_previsao(
 
 
 def exportar_dados_para_html(
-    excel_path, df_siacesp_bruto=None, dict_lineups=None, config_sop=None
+    excel_path, df_siacesp_bruto=None, dict_lineups=None, config_sop=None, output_path=str
 ):
     """
     Lê o arquivo Excel gerado, consolida os dados raw (SIACESP + LineUps)
@@ -333,10 +339,10 @@ def exportar_dados_para_html(
             "config_sop": config_sop or {},
         }
 
-        with open("dados_dashboard.js", "w", encoding="utf-8") as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write("const dashboardData = " + json.dumps(datasets, default=str) + ";")
 
-        print("✅ Arquivo 'dados_dashboard.js' atualizado com Suporte Multi-Lineup!")
+        print(f"✅ Arquivo {output_path} atualizado com Suporte Multi-Lineup!")
     except Exception as e:
         print(f"❌ Erro ao exportar dados para HTML: {e}")
 
