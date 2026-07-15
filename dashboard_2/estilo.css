@@ -1,0 +1,258 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --border: #e5e5e5;
+    --border-dark: #000000;
+    --text: #000000;
+    --muted: #666666;
+    --radius: 0px;
+
+    --color-n: #000000;
+    --color-p: #666666;
+    --color-k: #b3b3b3;
+
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ── */
+header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-dark);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.brand h1 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    text-transform: uppercase;
+}
+
+.meta-info {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+}
+
+/* ── LAYOUT ── */
+main {
+    padding: 40px 32px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* ── STRIP DE SEÇÕES NPK ── */
+.kpi-section-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+}
+
+.section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border-dark);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+}
+
+.kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 16px;
+}
+
+.kpi-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.kpi-period {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-bottom: 8px;
+}
+
+.kpi-value {
+    font-size: 32px;
+    font-weight: 600;
+    font-family: var(--mono);
+    line-height: 1;
+    letter-spacing: -1px;
+}
+
+.kpi-sub-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.kpi-sub-item {
+    font-size: 12px;
+}
+
+.kpi-sub-item span {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 14px;
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* ── CHARTS ── */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.charts-grid-equal {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.chart-container {
+    border: 1px solid var(--border);
+    padding: 24px;
+    height: 420px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.chart-wrapper {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+}
+
+/* ── TABS ── */
+.subtabs {
+    display: flex;
+    gap: 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+}
+
+.subtab {
+    padding: 0 0 12px 0;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: color 0.2s;
+}
+
+.subtab:hover {
+    color: var(--text);
+}
+
+.subtab.active {
+    color: var(--text);
+    border-bottom-color: var(--border-dark);
+    font-weight: 600;
+}
+
+.subtab-content {
+    display: none;
+}
+
+.subtab-content.active {
+    display: block;
+}
+
+/* ── TABLES E FILTERS ── */
+.filter-bar {
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+select,
+button {
+    padding: 8px 12px;
+    border: 1px solid var(--border-dark);
+    background: var(--surface);
+    font-family: var(--sans);
+    font-size: 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+button.primary {
+    background: var(--text);
+    color: var(--bg);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+th,
+td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
