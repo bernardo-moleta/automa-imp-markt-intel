@@ -281,9 +281,12 @@
             <div class="kpi-label">Toneladas SIACESP Brasil</div>
             <div class="kpi-value" id="kpi-siacesp-vol">—</div>
             <div class="kpi-sub-row">
-              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-n" style="color:var(--color-n);">—</span> Nitrogênio (N)</div>
-              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-p" style="color:var(--color-p);">—</span> Fósforo (P)</div>
-              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-k" style="color:var(--color-k);">—</span> Potássio (K)</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-n" style="color:var(--color-n);">—</span> Nitrogênio
+                (N)</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-p" style="color:var(--color-p);">—</span> Fósforo (P)
+              </div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-k" style="color:var(--color-k);">—</span> Potássio (K)
+              </div>
             </div>
           </div>
 
@@ -337,7 +340,7 @@
           <div class="chart-wrapper"><canvas id="chart-siacesp-nutrients"></canvas></div>
         </div>
         <div class="chart-container">
-          <h3>Composição ORION (Base: SAM, UREA, MOP)</h3>
+          <h3>Composição LineUp</h3>
           <div class="chart-wrapper"><canvas id="chart-orion-nutrients"></canvas></div>
         </div>
       </div>
@@ -464,6 +467,7 @@
       document.getElementById('kpi-siacesp-med-p').textContent = totalSiacesp > 0 ? window.formatNumberNutr(mP / totalSiacesp, 2) : '0';
       document.getElementById('kpi-siacesp-med-k').textContent = totalSiacesp > 0 ? window.formatNumberNutr(mK / totalSiacesp, 2) : '0';
 
+
       // ---- ORION (Nova lógica DAX) ----
       // 1. Isolar a extração mais recente do Line Up (evita duplicidade do histórico de posições)
       const ultimaPosicao = meta.orion_posicao_padrao;
@@ -492,14 +496,14 @@
 
       const orion_tons_np = orionLast.filter(r => r.produto === 'NP').reduce((acc, r) => acc + r.qtty, 0);
       const orion_pontos_p_np = orion_tons_np * 0.42;
-      
+
       const orion_tons_ssp = orionLast.filter(r => r.produto === 'SSP').reduce((acc, r) => acc + r.qtty, 0);
       const orion_pontos_p_ssp = orion_tons_ssp * 0.20;
 
       const orion_tons_tsp = orionLast.filter(r => r.produto === 'TSP').reduce((acc, r) => acc + r.qtty, 0);
       const orion_pontos_p_tsp = orion_tons_tsp * 0.45;
-      
-      
+
+
 
       // 3. Totalizadores de Massa para o Período
       const orion_total_pontos_n = orion_pontos_n_sam + orion_pontos_n_urea;
@@ -535,7 +539,7 @@
       window.nutrientCharts['chart-siacesp-nutrients'] = new Chart(document.getElementById('chart-siacesp-nutrients'), {
         type: 'doughnut',
         data: {
-          labels: ['Nitrogênio', 'Fósforo', 'Potássio'],
+          labels: ['N', 'P', 'K'],
           datasets: [{
             data: [total > 0 ? (mN / total * 100).toFixed(1) : 0, total > 0 ? (mP / total * 100).toFixed(1) : 0, total > 0 ? (mK / total * 100).toFixed(1) : 0],
             backgroundColor: ['#000000', '#666666', '#b3b3b3'],
@@ -619,21 +623,23 @@
         data: {
           labels: ['N', 'P', 'K'],
           datasets: [{
-            data: [total > 0 ? (oN / total * 100).toFixed(1) : 0, 0, total > 0 ? (oK / total * 100).toFixed(1) : 0],
+            data: [total > 0 ? (oN / total * 100).toFixed(1) : 0, total > 0 ? (oP / total * 100).toFixed(1) : 0, total > 0 ? (oK / total * 100).toFixed(1) : 0],
             backgroundColor: ['#000000', '#666666', '#b3b3b3'], borderWidth: 1, borderColor: '#ffffff'
           }]
         },
         options: { ...commonChartOptions, scales: { x: { display: false }, y: { display: false } } }
       });
 
+
+
       const byProduct = {
-        'SAM': {n: tons_sam * 0.21, p: 0, k: 0 },
-        'UREA': {n: tons_urea * 0.46, p: 0, k: 0 },
-        'MOP': {n: 0, p: 0, k: tons_mop * 0.60 },
-        'MAP': {n: tons_map * 0.52, p: 0, k:0},
-        'NP': {n:tons_np * 0., p:0, k:0},
-        'SSP': {n:tons_ssp * 0.2, p:0, k:0},
-        'TSP': {n:tons_tsp * 0.45, p:0, k:0}
+        'SAM': { n: tons_sam * 0.21, p: 0, k: 0 },
+        'UREA': { n: tons_urea * 0.46, p: 0, k: 0 },
+        'MOP': { n: 0, p: 0, k: tons_mop * 0.60 },
+        'MAP': { n: tons_map * 0.52, p: 0, k: 0 },
+        'NP': { n: 0, p: tons_np * 0.42, k: 0 },
+        'SSP': { n: 0, p: tons_ssp * 0.2, k: 0 },
+        'TSP': { n: 0, p: tons_tsp * 0.45, k: 0 }
       };
 
       const produtos = ['SAM', 'UREA', 'MOP', 'MAP', 'NP', 'SSP', 'TSP'];
@@ -646,7 +652,7 @@
           datasets: [
             { label: 'N', data: produtos.map(p => byProduct[p].n), backgroundColor: '#000' },
             { label: 'P', data: produtos.map(p => byProduct[p].p), backgroundColor: '#666' },
-            { label: 'K', data: produtos.map(p => byProduct[p].k), backgroundColor: '#b3b3b3'}
+            { label: 'K', data: produtos.map(p => byProduct[p].k), backgroundColor: '#b3b3b3' }
           ]
         },
         options: commonChartOptions
