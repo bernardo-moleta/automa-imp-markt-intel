@@ -221,7 +221,7 @@ def gerar_dashboard_html():
     with open("dashboard_previsao_interativo.html", "w", encoding="utf-8") as f:
         f.write(html_content)
     
-    logger.info("✅ Dashboard Interativo gerado com sucesso: dashboard_previsao_interativo.html")
+    logger.info("✅ Dashboard gerado com sucesso: dashboard_previsao_interativo.html")
 
 if __name__ == "__main__":
     gerar_dashboard_html()
