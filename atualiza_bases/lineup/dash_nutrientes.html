@@ -279,9 +279,9 @@
 
   <main>
     <div class="subtabs">
-      <button class="subtab active" data-subtarget="nutrientes-visao-geral">Visão Geral</button>
-      <button class="subtab" data-subtarget="nutrientes-comparativo">Comparativo</button>
-      <button class="subtab" data-subtarget="nutrientes-analise">Análise</button>
+      <button class="subtab active" data-subtarget="nutrientes-visao-geral">Report de Pontos</button>
+      <!-- <button class="subtab" data-subtarget="nutrientes-comparativo">Comparativo</button>
+      <button class="subtab" data-subtarget="nutrientes-analise">Análise</button> -->
     </div>
 
     <div id="nutrientes-visao-geral" class="subtab-content active">
@@ -309,11 +309,11 @@
             <div class="kpi-label">Fórmula Média</div>
             <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
               <div class="kpi-sub-item"><span id="kpi-siacesp-med-n"
-                  style="color:var(--color-n); font-size:20px;">—</span> Tons</div>
+                  style="color:var(--color-n); font-size:20px;">—</span> Média N</div>
               <div class="kpi-sub-item"><span id="kpi-siacesp-med-p"
-                  style="color:var(--color-p); font-size:20px;">—</span> Tons</div>
+                  style="color:var(--color-p); font-size:20px;">—</span> Média P</div>
               <div class="kpi-sub-item"><span id="kpi-siacesp-med-k"
-                  style="color:var(--color-k); font-size:20px;">—</span> Tons</div>
+                  style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
             </div>
           </div>
 
@@ -324,9 +324,11 @@
             <div class="kpi-sub-row">
               <div class="kpi-sub-item"><span id="kpi-siacesp-pct-n-2" style="color:var(--color-n);">—</span> Nitrogênio
                 (N)</div>
-              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-p-2" style="color:var(--color-p);">—</span> Fósforo (P)
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-p-2" style="color:var(--color-p);">—</span> Fósforo
+                (P)
               </div>
-              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-k-2" style="color:var(--color-k);">—</span> Potássio (K)
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-k-2" style="color:var(--color-k);">—</span> Potássio
+                (K)
               </div>
             </div>
           </div>
@@ -335,11 +337,11 @@
             <div class="kpi-label">Fórmula Média</div>
             <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
               <div class="kpi-sub-item"><span id="kpi-siacesp-med-n-2"
-                  style="color:var(--color-n); font-size:20px;">—</span> Tons</div>
+                  style="color:var(--color-n); font-size:20px;">—</span> Méida N</div>
               <div class="kpi-sub-item"><span id="kpi-siacesp-med-p-2"
-                  style="color:var(--color-p); font-size:20px;">—</span> Tons</div>
+                  style="color:var(--color-p); font-size:20px;">—</span> Média P</div>
               <div class="kpi-sub-item"><span id="kpi-siacesp-med-k-2"
-                  style="color:var(--color-k); font-size:20px;">—</span> Tons</div>
+                  style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
             </div>
           </div>
         </div>
@@ -378,7 +380,8 @@
             <div class="kpi-period" id="kpi-orion-period-2">—</div>
             <div class="kpi-value" id="kpi-orion-vol-2">—</div>
             <div class="kpi-sub-row">
-              <div class="kpi-sub-item"><span id="kpi-orion-pct-n-2" style="color:var(--color-n);">—</span> Nitrogênio (N)
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-n-2" style="color:var(--color-n);">—</span> Nitrogênio
+                (N)
               </div>
               <div class="kpi-sub-item"><span id="kpi-orion-pct-p-2" style="color:var(--color-p);">—</span> Fósforo (P)
               </div>
@@ -540,9 +543,14 @@
         document.getElementById(base + '-pct-p' + suffix).textContent = totalMassa > 0 ? (mP / totalMassa * 100).toFixed(1) + '%' : '0%';
         document.getElementById(base + '-pct-k' + suffix).textContent = totalMassa > 0 ? (mK / totalMassa * 100).toFixed(1) + '%' : '0%';
 
-        document.getElementById(base + '-med-n' + suffix).textContent = vol > 0 ? window.formatNumberNutr(mN / vol, 2) : '0';
-        document.getElementById(base + '-med-p' + suffix).textContent = vol > 0 ? window.formatNumberNutr(mP / vol, 2) : '0';
-        document.getElementById(base + '-med-k' + suffix).textContent = vol > 0 ? window.formatNumberNutr(mK / vol, 2) : '0';
+        // Cálculo da Fórmula Média em Percentagem (Massa do Nutriente / Volume Total)
+        const medN = vol > 0 ? (mN / vol) : 0;
+        const medP = vol > 0 ? (mP / vol) : 0;
+        const medK = vol > 0 ? (mK / vol) : 0;
+
+        document.getElementById(base + '-med-n' + suffix).textContent = window.formatNumberNutr(medN, 0) + '%';
+        document.getElementById(base + '-med-p' + suffix).textContent = window.formatNumberNutr(medP, 0) + '%';
+        document.getElementById(base + '-med-k' + suffix).textContent = window.formatNumberNutr(medK, 0) + '%';
 
         const periodoEl = document.getElementById(base + '-period' + suffix);
         if (periodoEl) periodoEl.textContent = periodoLabel;
@@ -635,7 +643,8 @@
       const periodoOrionCompLabel = orionDeMes === orionAteMes
         ? `SIACESP (${nomeMes(orionDeMes)}/${anoComparativo})`
         : `SIACESP (${nomeMes(orionDeMes)} - ${nomeMes(orionAteMes)}/${anoComparativo})`;
-        preencherCartaoSiacesp('kpi-orion', '-2', regsOrionComp, periodoOrionCompLabel);    };
+      preencherCartaoSiacesp('kpi-orion', '-2', regsOrionComp, periodoOrionCompLabel);
+    };
 
     window.renderChartsSiacesp = () => {
       const { siacesp } = nutrientesData;
