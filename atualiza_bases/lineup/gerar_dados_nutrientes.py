@@ -8,10 +8,17 @@ dos nutrientes (N, P, K), e exporta um arquivo JavaScript.
 
 import json
 import pandas as pd
+from datetime import date, timedelta
+
+
+hoje = date.today()
+quinta_feira = hoje + timedelta(days=(3 - hoje.weekday()))
+quinta_feira_format = quinta_feira.strftime('%d-%m-%Y')
+
 
 SIACESP_PATH = "BI_Importacao Siacesp.xlsx"
 ORION_PATH = "BI_Line Up_ORION.xlsx" 
-OUTPUT_PATH = "dados_nutrientes.js"
+OUTPUT_PATH = f"dados_nutrientes{quinta_feira_format}.js"
 
 
 def carregar_siacesp(path):
