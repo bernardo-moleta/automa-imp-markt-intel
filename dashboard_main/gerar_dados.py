@@ -278,7 +278,7 @@ def exportar_dados_para_html(
 
         def ler_aba(nome_aba):
             if nome_aba in xls.sheet_names:
-                df = pd.read_excel(xls, sheet_name=nome_aba, skiprows=2)
+                df = pd.read_excel(xls, sheet_name=nome_aba)
                 if "Y_PRODUTO PARA" in df.columns:
                     df = df[df["Y_PRODUTO PARA"] != "TOTAL"]
 
