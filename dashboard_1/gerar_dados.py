@@ -132,13 +132,15 @@ class ComparadorEscalacao:
 
 def aplicar_estilo_planilha(ws, titulo):
     """Aplica estilos a uma planilha do Excel"""
-    header_fill = PatternFill(start_color="161B22", end_color="161B22", fill_type="solid")
+    header_fill = PatternFill(
+        start_color="161B22", end_color="161B22", fill_type="solid"
+    )
     header_font = Font(bold=True, color="E6EDF3")
     thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
     )
 
     for row in ws.iter_rows(min_row=1, max_row=1, min_col=1, max_col=ws.max_column):
@@ -146,26 +148,36 @@ def aplicar_estilo_planilha(ws, titulo):
             cell.fill = header_fill
             cell.font = header_font
             cell.border = thin_border
-            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.alignment = Alignment(
+                horizontal="center", vertical="center", wrap_text=True
+            )
 
-    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+    for row in ws.iter_rows(
+        min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column
+    ):
         for cell in row:
             cell.border = thin_border
             cell.alignment = Alignment(horizontal="left", vertical="center")
 
 
-def gerar_dados_previsao(df_siacesp, coluna_data="Z_PERÍODO", coluna_volume="VOLUME", coluna_produto="Y_PRODUTO PARA", meses_futuros=6):
+def gerar_dados_previsao(
+    df_siacesp,
+    coluna_data="Z_PERÍODO",
+    coluna_volume="VOLUME",
+    coluna_produto="Y_PRODUTO PARA",
+    meses_futuros=6,
+):
     """
-    ✅ CORRIGIDO: Treina múltiplos modelos Prophet (Geral e Específicos por Produto) 
+    ✅ CORRIGIDO: Treina múltiplos modelos Prophet (Geral e Específicos por Produto)
     e exporta um dicionário segmentado com VALIDAÇÃO COMPLETA.
     """
     df = df_siacesp.copy()
-    df['ds'] = pd.to_datetime(df[coluna_data], errors='coerce')
-    df = df.dropna(subset=['ds'])
-    df[coluna_volume] = pd.to_numeric(df[coluna_volume], errors='coerce').fillna(0)
-    
+    df["ds"] = pd.to_datetime(df[coluna_data], errors="coerce")
+    df = df.dropna(subset=["ds"])
+    df[coluna_volume] = pd.to_numeric(df[coluna_volume], errors="coerce").fillna(0)
+
     # Lista de produtos alvo + cenário geral
-    produtos_alvo = ['MOP', 'SAM', 'UREA', 'MAP', 'NP', 'SSP', 'TSP']
+    produtos_alvo = ["MOP", "SAM", "UREA", "MAP", "NP", "SSP", "TSP"]
     resultados_exportacao = {}
 
     print("Iniciando geração de previsões com Prophet...")
@@ -173,17 +185,21 @@ def gerar_dados_previsao(df_siacesp, coluna_data="Z_PERÍODO", coluna_volume="VO
     # Função interna para treinar o Prophet e evitar repetição de código
     def processar_modelo(df_filtrado, nome_chave):
         print(f"  ⏳ Processando modelo: {nome_chave}...")
-        
+
         # Se não houver dados para o produto, retorna lista vazia
         if df_filtrado.empty:
             print(f"    ⚠️  Sem dados para: {nome_chave}")
             resultados_exportacao[nome_chave] = []
             return
-            
-        df_agg = df_filtrado.groupby(df_filtrado['ds'].dt.to_period('M'))[coluna_volume].sum().reset_index()
-        df_agg['ds'] = df_agg['ds'].dt.to_timestamp()
-        df_agg.rename(columns={coluna_volume: 'y'}, inplace=True)
-        
+
+        df_agg = (
+            df_filtrado.groupby(df_filtrado["ds"].dt.to_period("M"))[coluna_volume]
+            .sum()
+            .reset_index()
+        )
+        df_agg["ds"] = df_agg["ds"].dt.to_timestamp()
+        df_agg.rename(columns={coluna_volume: "y"}, inplace=True)
+
         # Prophet precisa de um histórico mínimo (ex: 2 meses) para não quebrar
         if len(df_agg) < 2:
             print(f"    ⚠️  Histórico insuficiente (< 2 meses) para: {nome_chave}")
@@ -191,32 +207,44 @@ def gerar_dados_previsao(df_siacesp, coluna_data="Z_PERÍODO", coluna_volume="VO
             return
 
         try:
-            modelo = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+            modelo = Prophet(
+                yearly_seasonality=True,
+                weekly_seasonality=False,
+                daily_seasonality=False,
+            )
             modelo.fit(df_agg)
-            
-            futuro = modelo.make_future_dataframe(periods=meses_futuros, freq='MS') 
+
+            futuro = modelo.make_future_dataframe(periods=meses_futuros, freq="MS")
             previsao = modelo.predict(futuro)
-            
+
             dados_js = []
             for index, row in previsao.iterrows():
-                data_str = row['ds'].strftime('%Y-%m')
-                
-                real_row = df_agg[df_agg['ds'] == row['ds']]
-                valor_real_numpy = real_row['y'].values[0] if not real_row.empty else None
-                
-                valor_real = None if pd.isna(valor_real_numpy) else round(float(valor_real_numpy), 2)
-                
-                dados_js.append({
-                    "data": data_str,
-                    "real": valor_real,
-                    "tendencia": round(float(row['yhat']), 2),
-                    "limite_inferior": round(float(row['yhat_lower']), 2),
-                    "limite_superior": round(float(row['yhat_upper']), 2)
-                })
-                
+                data_str = row["ds"].strftime("%Y-%m")
+
+                real_row = df_agg[df_agg["ds"] == row["ds"]]
+                valor_real_numpy = (
+                    real_row["y"].values[0] if not real_row.empty else None
+                )
+
+                valor_real = (
+                    None
+                    if pd.isna(valor_real_numpy)
+                    else round(float(valor_real_numpy), 2)
+                )
+
+                dados_js.append(
+                    {
+                        "data": data_str,
+                        "real": valor_real,
+                        "tendencia": round(float(row["yhat"]), 2),
+                        "limite_inferior": round(float(row["yhat_lower"]), 2),
+                        "limite_superior": round(float(row["yhat_upper"]), 2),
+                    }
+                )
+
             resultados_exportacao[nome_chave] = dados_js
             print(f"    ✅ {nome_chave}: {len(dados_js)} pontos de dados gerados")
-            
+
         except Exception as e:
             print(f"    ❌ Erro ao treinar {nome_chave}: {str(e)}")
             resultados_exportacao[nome_chave] = []
@@ -227,18 +255,22 @@ def gerar_dados_previsao(df_siacesp, coluna_data="Z_PERÍODO", coluna_volume="VO
     # 2. Roda um modelo para CADA PRODUTO específico
     for produto in produtos_alvo:
         # Filtra ignorando maiúsculas/minúsculas e garantindo que é texto
-        df_produto = df[df[coluna_produto].fillna('').str.upper() == produto.upper()]
+        df_produto = df[df[coluna_produto].fillna("").str.upper() == produto.upper()]
         processar_modelo(df_produto, produto)
 
     print(f"\n✅ Previsões geradas com sucesso!")
-    print(f"   Produtos com dados: {sum(1 for v in resultados_exportacao.values() if v)}")
-    
+    print(
+        f"   Produtos com dados: {sum(1 for v in resultados_exportacao.values() if v)}"
+    )
+
     return resultados_exportacao
 
 
-def exportar_dados_para_html(excel_path, df_siacesp_bruto=None, dict_lineups=None, config_sop=None):
+def exportar_dados_para_html(
+    excel_path, df_siacesp_bruto=None, dict_lineups=None, config_sop=None
+):
     """
-    Lê o arquivo Excel gerado, consolida os dados raw (SIACESP + LineUps) 
+    Lê o arquivo Excel gerado, consolida os dados raw (SIACESP + LineUps)
     e exporta para um arquivo JavaScript para o Dashboard.
     """
     try:
@@ -442,10 +474,10 @@ def main():
     # 7. GERAÇÃO DE PREVISÕES PROPHET ✅
     print("6️⃣  Gerando previsões com Prophet...")
     dados_prophet = gerar_dados_previsao(
-        df_siacesp=comparador.df_siacesp, 
-        coluna_produto="Y_PRODUTO PARA", 
-        coluna_volume="VOLUME", 
-        meses_futuros=7
+        df_siacesp=comparador.df_siacesp,
+        coluna_produto="Y_PRODUTO PARA",
+        coluna_volume="VOLUME",
+        meses_futuros=7,
     )
 
     # VALIDAÇÃO: Garante que pelo menos GERAL tem dados
@@ -455,18 +487,17 @@ def main():
 
     with open("dados_dashboard.js", "a", encoding="utf-8") as f:
         f.write(f"\n\nconst FORECAST_DATA = {json.dumps(dados_prophet, indent=2)};\n")
-    
-    print(f"   ✅ Dados Prophet exportados: {json.dumps({k: len(v) for k, v in dados_prophet.items()}, indent=6)}\n")
+
+    print(
+        f"   ✅ Dados Prophet exportados: {json.dumps({k: len(v) for k, v in dados_prophet.items()}, indent=6)}\n"
+    )
 
     print("=" * 60)
     print("✅ PIPELINE COMPLETO COM SUCESSO!")
     print("=" * 60)
-    print("\n📊 Arquivos gerados:")
+    print("\n Arquivos gerados:")
     print("   • Analise_Comparativa_Escalacao.xlsx (Relatório executivo)")
     print("   • dados_dashboard.js (Base de dados do Dashboard)")
-    print("\n🌐 Próximo passo:")
-    print("   Abra 'dashboard_comparativo_CORRIGIDO.html' em um navegador")
-    print("   e vá à aba '🔮 Previsão (PROPHET)' para visualizar as previsões.\n")
 
 
 # Executa o pipeline
