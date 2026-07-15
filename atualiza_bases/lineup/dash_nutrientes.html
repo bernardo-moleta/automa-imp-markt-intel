@@ -109,6 +109,13 @@
       margin-bottom: 8px;
     }
 
+    .kpi-period {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+      margin-bottom: 8px;
+    }
+
     .kpi-value {
       font-size: 32px;
       font-weight: 600;
@@ -141,6 +148,13 @@
     .charts-grid {
       display: grid;
       grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .charts-grid-equal {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 24px;
       margin-bottom: 32px;
     }
@@ -279,6 +293,7 @@
 
           <div class="kpi-card" style="border-left: 3px solid var(--border-dark);">
             <div class="kpi-label">Toneladas SIACESP Brasil</div>
+            <div class="kpi-period" id="kpi-siacesp-period">—</div>
             <div class="kpi-value" id="kpi-siacesp-vol">—</div>
             <div class="kpi-sub-row">
               <div class="kpi-sub-item"><span id="kpi-siacesp-pct-n" style="color:var(--color-n);">—</span> Nitrogênio
@@ -301,6 +316,32 @@
                   style="color:var(--color-k); font-size:20px;">—</span> Tons</div>
             </div>
           </div>
+
+          <div class="kpi-card" style="border-left: 3px solid var(--border-dark);">
+            <div class="kpi-label">Toneladas SIACESP Brasil</div>
+            <div class="kpi-period" id="kpi-siacesp-period-2">—</div>
+            <div class="kpi-value" id="kpi-siacesp-vol-2">—</div>
+            <div class="kpi-sub-row">
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-n-2" style="color:var(--color-n);">—</span> Nitrogênio
+                (N)</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-p-2" style="color:var(--color-p);">—</span> Fósforo (P)
+              </div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-k-2" style="color:var(--color-k);">—</span> Potássio (K)
+              </div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Fórmula Média</div>
+            <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-n-2"
+                  style="color:var(--color-n); font-size:20px;">—</span> Tons</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-p-2"
+                  style="color:var(--color-p); font-size:20px;">—</span> Tons</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-k-2"
+                  style="color:var(--color-k); font-size:20px;">—</span> Tons</div>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -308,6 +349,7 @@
 
           <div class="kpi-card" style="border-left: 3px solid var(--border-dark);">
             <div class="kpi-label">Toneladas Line Up Brasil</div>
+            <div class="kpi-period" id="kpi-orion-period">—</div>
             <div class="kpi-value" id="kpi-orion-vol">—</div>
             <div class="kpi-sub-row">
               <div class="kpi-sub-item"><span id="kpi-orion-pct-n" style="color:var(--color-n);">—</span> Nitrogênio (N)
@@ -330,11 +372,37 @@
                   style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
             </div>
           </div>
+
+          <div class="kpi-card" style="border-left: 3px solid var(--border-dark);">
+            <div class="kpi-label">Toneladas SIACESP Brasil</div>
+            <div class="kpi-period" id="kpi-orion-period-2">—</div>
+            <div class="kpi-value" id="kpi-orion-vol-2">—</div>
+            <div class="kpi-sub-row">
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-n-2" style="color:var(--color-n);">—</span> Nitrogênio (N)
+              </div>
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-p-2" style="color:var(--color-p);">—</span> Fósforo (P)
+              </div>
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-k-2" style="color:var(--color-k);">—</span> Potássio (K)
+              </div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">FórmulaMédia</div>
+            <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
+              <div class="kpi-sub-item"><span id="kpi-orion-med-n-2"
+                  style="color:var(--color-n); font-size:20px;">—</span> Média N</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-med-p-2"
+                  style="color:var(--color-p); font-size:20px;">—</span> Média P</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-med-k-2"
+                  style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
+            </div>
+          </div>
         </div>
 
       </div>
 
-      <div class="charts-grid">
+      <div class="charts-grid-equal">
         <div class="chart-container">
           <h3>Composição SIACESP</h3>
           <div class="chart-wrapper"><canvas id="chart-siacesp-nutrients"></canvas></div>
@@ -346,7 +414,7 @@
       </div>
 
       <div class="chart-container" style="height: 380px;">
-        <h3>Tendência Absolutas (SIACESP)</h3>
+        <h3>Relação de Pontos Pelo Tempo (SIACESP)</h3>
         <div class="chart-wrapper"><canvas id="chart-siacesp-timeline"></canvas></div>
       </div>
 
@@ -435,9 +503,14 @@
     const commonChartOptions = {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false, axis: 'x' },
+      hover: { mode: 'index', intersect: false },
       plugins: {
         legend: { labels: { font: { family: "'Inter', sans-serif" }, color: '#000' } },
         tooltip: {
+          enabled: true,
+          mode: 'index',
+          intersect: false,
           backgroundColor: '#000', titleFont: { family: "'Inter', sans-serif" }, bodyFont: { family: "'JetBrains Mono', monospace" }
         }
       },
@@ -451,37 +524,58 @@
       if (typeof nutrientesData === 'undefined') return;
       const { siacesp, orion, meta } = nutrientesData;
 
-      // ---- SIACESP (Standby) ----
-      const totalSiacesp = siacesp.reduce((s, r) => s + r.volume, 0);
-      const mN = siacesp.reduce((s, r) => s + r.massa_n, 0);
-      const mP = siacesp.reduce((s, r) => s + r.massa_p, 0);
-      const mK = siacesp.reduce((s, r) => s + r.massa_k, 0);
-      const totalMassa = mN + mP + mK;
+      const NOMES_MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const nomeMes = (mm) => NOMES_MES[parseInt(mm, 10) - 1] || mm;
 
-      document.getElementById('kpi-siacesp-vol').textContent = window.formatNumberNutr(totalSiacesp, 1);
-      document.getElementById('kpi-siacesp-pct-n').textContent = totalMassa > 0 ? (mN / totalMassa * 100).toFixed(1) + '%' : '0%';
-      document.getElementById('kpi-siacesp-pct-p').textContent = totalMassa > 0 ? (mP / totalMassa * 100).toFixed(1) + '%' : '0%';
-      document.getElementById('kpi-siacesp-pct-k').textContent = totalMassa > 0 ? (mK / totalMassa * 100).toFixed(1) + '%' : '0%';
+      // Preenche um cartão "Toneladas..." + "Fórmula Média" com um conjunto de registros do SIACESP
+      const preencherCartaoSiacesp = (base, suffix, registros, periodoLabel) => {
+        const vol = registros.reduce((s, r) => s + r.volume, 0);
+        const mN = registros.reduce((s, r) => s + r.massa_n, 0);
+        const mP = registros.reduce((s, r) => s + r.massa_p, 0);
+        const mK = registros.reduce((s, r) => s + r.massa_k, 0);
+        const totalMassa = mN + mP + mK;
 
-      document.getElementById('kpi-siacesp-med-n').textContent = totalSiacesp > 0 ? window.formatNumberNutr(mN / totalSiacesp, 2) : '0';
-      document.getElementById('kpi-siacesp-med-p').textContent = totalSiacesp > 0 ? window.formatNumberNutr(mP / totalSiacesp, 2) : '0';
-      document.getElementById('kpi-siacesp-med-k').textContent = totalSiacesp > 0 ? window.formatNumberNutr(mK / totalSiacesp, 2) : '0';
+        document.getElementById(base + '-vol' + suffix).textContent = window.formatNumberNutr(vol, 1);
+        document.getElementById(base + '-pct-n' + suffix).textContent = totalMassa > 0 ? (mN / totalMassa * 100).toFixed(1) + '%' : '0%';
+        document.getElementById(base + '-pct-p' + suffix).textContent = totalMassa > 0 ? (mP / totalMassa * 100).toFixed(1) + '%' : '0%';
+        document.getElementById(base + '-pct-k' + suffix).textContent = totalMassa > 0 ? (mK / totalMassa * 100).toFixed(1) + '%' : '0%';
 
+        document.getElementById(base + '-med-n' + suffix).textContent = vol > 0 ? window.formatNumberNutr(mN / vol, 2) : '0';
+        document.getElementById(base + '-med-p' + suffix).textContent = vol > 0 ? window.formatNumberNutr(mP / vol, 2) : '0';
+        document.getElementById(base + '-med-k' + suffix).textContent = vol > 0 ? window.formatNumberNutr(mK / vol, 2) : '0';
 
-      // ---- ORION (Nova lógica DAX) ----
-      // 1. Isolar a extração mais recente do Line Up (evita duplicidade do histórico de posições)
+        const periodoEl = document.getElementById(base + '-period' + suffix);
+        if (periodoEl) periodoEl.textContent = periodoLabel;
+      };
+
+      // ---- Período padrão SIACESP: Janeiro até o último mês disponível, no ano mais recente ----
+      const siacespYms = (meta.siacesp_periodos && meta.siacesp_periodos.length ? meta.siacesp_periodos : siacesp.map(r => r.ym)).slice().sort();
+      const ultimoYmSiacesp = siacespYms[siacespYms.length - 1];
+      const anoAtual = ultimoYmSiacesp.slice(0, 4);
+      const mesAtual = ultimoYmSiacesp.slice(5, 7);
+      const anoComparativo = String(Number(anoAtual) - 1);
+
+      // Canto superior esquerdo: SIACESP, Jan -> último mês disponível, ano atual
+      const deAtual = `${anoAtual}-01`;
+      const ateAtual = `${anoAtual}-${mesAtual}`;
+      const regsAtual = siacesp.filter(r => r.ym >= deAtual && r.ym <= ateAtual);
+      preencherCartaoSiacesp('kpi-siacesp', '', regsAtual, `SIACESP (Jan - ${nomeMes(mesAtual)}/${anoAtual})`);
+
+      // Canto inferior esquerdo: mesmo período (Jan -> mesAtual), ano anterior
+      const deComp = `${anoComparativo}-01`;
+      const ateComp = `${anoComparativo}-${mesAtual}`;
+      const regsComp = siacesp.filter(r => r.ym >= deComp && r.ym <= ateComp);
+      preencherCartaoSiacesp('kpi-siacesp', '-2', regsComp, `SIACESP (Jan - ${nomeMes(mesAtual)}/${anoComparativo})`);
+
+      // ---- ORION (canto superior direito) — lógica original, mantida ----
       const ultimaPosicao = meta.orion_posicao_padrao;
       let orionLast = orion.filter(r => r.pos === ultimaPosicao);
-
-      // 2. Aplicar a janela de meses (Ex: Junho a Julho) para espelhar a tela do BI
       orionLast = orionLast.filter(r =>
         r.etbYm >= meta.orion_de_padrao && r.etbYm <= meta.orion_ate_padrao
       );
 
-      // 1. Z_TOTAL QTD ORION (Denominador universal para diluição)
       const z_total_qtd_orion = orionLast.reduce((acc, r) => acc + r.qtty, 0);
 
-      // 2. Fórmulas Isoladas para SAM, UREA e MOP, MAP, SSP, TSP, NP
       const orion_tons_sam = orionLast.filter(r => r.produto === 'SAM').reduce((acc, r) => acc + r.qtty, 0);
       const orion_pontos_n_sam = orion_tons_sam * 0.21;
 
@@ -503,9 +597,6 @@
       const orion_tons_tsp = orionLast.filter(r => r.produto === 'TSP').reduce((acc, r) => acc + r.qtty, 0);
       const orion_pontos_p_tsp = orion_tons_tsp * 0.45;
 
-
-
-      // 3. Totalizadores de Massa para o Período
       const orion_total_pontos_n = orion_pontos_n_sam + orion_pontos_n_urea;
       const orion_total_pontos_p = orion_pontos_p_map + orion_pontos_p_np + orion_pontos_p_ssp + orion_pontos_p_tsp;
       const orion_total_pontos_k = orion_pontos_k_mop;
@@ -513,12 +604,10 @@
 
       document.getElementById('kpi-orion-vol').textContent = window.formatNumberNutr(z_total_qtd_orion, 1);
 
-      // Percentuais de representatividade da massa
       document.getElementById('kpi-orion-pct-n').textContent = orion_total_massa > 0 ? (orion_total_pontos_n / orion_total_massa * 100).toFixed(1) + '%' : '0%';
       document.getElementById('kpi-orion-pct-p').textContent = orion_total_massa > 0 ? (orion_total_pontos_p / orion_total_massa * 100).toFixed(1) + '%' : '0%';
       document.getElementById('kpi-orion-pct-k').textContent = orion_total_massa > 0 ? (orion_total_pontos_k / orion_total_massa * 100).toFixed(1) + '%' : '0%';
 
-      // 4. Média Ponderada ORION formatada em percentual visual (* 100)
       const average_pontos_n = z_total_qtd_orion > 0 ? (orion_total_pontos_n / z_total_qtd_orion) * 100 : 0;
       const average_pontos_p = z_total_qtd_orion > 0 ? (orion_total_pontos_p / z_total_qtd_orion) * 100 : 0;
       const average_pontos_k = z_total_qtd_orion > 0 ? (orion_total_pontos_k / z_total_qtd_orion) * 100 : 0;
@@ -526,7 +615,27 @@
       document.getElementById('kpi-orion-med-n').textContent = window.formatNumberNutr(average_pontos_n) + '%';
       document.getElementById('kpi-orion-med-p').textContent = window.formatNumberNutr(average_pontos_p) + '%';
       document.getElementById('kpi-orion-med-k').textContent = window.formatNumberNutr(average_pontos_k) + '%';
-    };
+
+      const orionDeMes = meta.orion_de_padrao ? meta.orion_de_padrao.slice(5, 7) : mesAtual;
+      const orionAteMes = meta.orion_ate_padrao ? meta.orion_ate_padrao.slice(5, 7) : mesAtual;
+      const orionPeriodoEl = document.getElementById('kpi-orion-period');
+      if (orionPeriodoEl) {
+        orionPeriodoEl.textContent = orionDeMes === orionAteMes
+          ? `Line Up (${nomeMes(orionDeMes)})`
+          : `Line Up (${nomeMes(orionDeMes)} - ${nomeMes(orionAteMes)})`;
+      }
+
+      // ---- Canto inferior direito: SIACESP no mesmo período (meses) do ORION acima, no ano anterior ----
+      const deOrionComp = `${anoComparativo}-${orionDeMes}`;
+      const ateOrionComp = `${anoComparativo}-${orionAteMes}`;
+      const regsOrionComp = deOrionComp <= ateOrionComp
+        ? siacesp.filter(r => r.ym >= deOrionComp && r.ym <= ateOrionComp)
+        : siacesp.filter(r => r.ym >= deOrionComp || r.ym <= ateOrionComp);
+
+      const periodoOrionCompLabel = orionDeMes === orionAteMes
+        ? `SIACESP (${nomeMes(orionDeMes)}/${anoComparativo})`
+        : `SIACESP (${nomeMes(orionDeMes)} - ${nomeMes(orionAteMes)}/${anoComparativo})`;
+        preencherCartaoSiacesp('kpi-orion', '-2', regsOrionComp, periodoOrionCompLabel);    };
 
     window.renderChartsSiacesp = () => {
       const { siacesp } = nutrientesData;
