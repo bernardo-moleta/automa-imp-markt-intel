@@ -4,22 +4,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Análise Comparativa de Escalação</title>
+  <title>Dashboard Integrado - Confiabilidade & Nutrientes</title>
+  
+  <!-- Bibliotecas Externas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <!-- Dados (Carrega ambas as bases) -->
   <script src="./dash_main/dados_dashboard.js"></script>
+  <script src="./dash_pontos/dados_nutrientes.js"></script>
+  
+  <!-- CSS Principal -->
   <link rel="stylesheet" href="./dash_main/estilo.css">
 </head>
 
 <body>
   <header>
     <div class="brand" style="display:flex; align-items:center; gap:12px;">
-      <div
-        style="width:36px; height:36px; background:linear-gradient(135deg, var(--accent), var(--purple)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-        ⚓</div>
+      <div style="width:36px; height:36px; background:linear-gradient(135deg, var(--accent), var(--purple)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
+        ⚓
+      </div>
       <div>
-        <h1>Dashboard Confiabilidade</h1>
-        <p>Análise Comparativa Automática / Line Up vs SIACESP</p>
+        <h1>Dashboard Integrado BrFértil</h1>
+        <p>Confiabilidade de Agentes & Análise de Nutrientes (NPK)</p>
       </div>
     </div>
     <div class="meta-info">
@@ -29,25 +36,21 @@
   </header>
 
   <main id="main-content">
+    
+    <!-- ── MENU DE ABAS UNIFICADO ── -->
     <div class="tabs">
       <div class="tab active" data-target="sop">S&OP Semanal Multi-Fontes</div>
-
       <div class="tab" data-target="tab-previsao">PREVISÃO (PROPHET)</div>
-
       <div class="tab" data-target="volume-agente">Volume por Agente</div>
-
       <div class="tab" data-target="resumo">Agente Mais Confiável</div>
-
       <div class="tab" data-target="detalhado">Detalhado Confiabilidade</div>
-
       <div class="tab" data-target="search">Pesquisa Avançada</div>
-
-
-      <!-- fazer uma aba com os últimas notícias (coleta wsons) -->
       <div class="tab" data-target="noticias">News</div>
-
+      <!-- Nova aba para o Dashboard de Nutrientes -->
+      <div class="tab" data-target="nutrientes">Nutrientes (Pontos)</div>
     </div>
 
+    <!-- ── CONTEÚDO: DASHBOARD MAIN ── -->
     <div id="sop" class="tab-content active">
       <div class="section-title">Visão S&OP Semanal Multi-Fontes</div>
       <p style="font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 24px; text-transform: uppercase;"
@@ -94,6 +97,7 @@
         </div>
       </div>
     </div>
+    
     <div id="detalhado" class="tab-content">
       <div class="tabs" style="margin-bottom: 20px;">
         <div class="subtab active" data-subtarget="unimar">Unimar</div>
@@ -289,7 +293,6 @@
             <h3>Projeção de Volume - Modelo Prophet</h3>
             <p>Histórico consolidado SIACESP cruzado com projeção sazonal.</p>
           </div>
-
           <select id="prophet-product-filter" class="prophet-selector" onchange="renderProphetChart()">
             <option value="GERAL">Volume Total (Geral)</option>
             <option value="MOP">MOP</option>
@@ -301,19 +304,151 @@
             <option value="TSP">TSP</option>
           </select>
         </div>
-
         <div class="prophet-chart-wrapper">
           <canvas id="prophet-chart"></canvas>
         </div>
+      </div>
+    </div>
+    
+    <!-- Aba genérica para News -->
+    <div id="noticias" class="tab-content">
+      <div class="section-title">Últimas Notícias (Coleta)</div>
+      <p style="color: var(--muted);">Conteúdo de notícias em desenvolvimento...</p>
+    </div>
+
+    <!-- ── CONTEÚDO: DASHBOARD NUTRIENTES ── -->
+    <div id="nutrientes" class="tab-content">
+      <div class="section-title">Proporção e Fórmulas Médias (NPK)</div>
+      
+      <div class="kpi-section-container">
+        <div>
+          <h2 class="section-title">SIACESP (Brasil)</h2>
+
+          <div class="kpi-card" style="border-left: 3px solid var(--accent);">
+            <div class="kpi-label">Toneladas SIACESP Brasil</div>
+            <div class="kpi-period" id="kpi-siacesp-period">—</div>
+            <div class="kpi-value" id="kpi-siacesp-vol">—</div>
+            <div class="kpi-sub-row">
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-n" style="color:var(--color-n);">—</span> Nitrogênio (N)</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-p" style="color:var(--color-p);">—</span> Fósforo (P)</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-k" style="color:var(--color-k);">—</span> Potássio (K)</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Fórmula Média</div>
+            <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-n" style="color:var(--color-n); font-size:20px;">—</span> Média N</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-p" style="color:var(--color-p); font-size:20px;">—</span> Média P</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-k" style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
+            </div>
+          </div>
+
+          <div class="kpi-card" style="border-left: 3px solid var(--accent);">
+            <div class="kpi-label">Toneladas SIACESP Brasil</div>
+            <div class="kpi-period" id="kpi-siacesp-period-2">—</div>
+            <div class="kpi-value" id="kpi-siacesp-vol-2">—</div>
+            <div class="kpi-sub-row">
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-n-2" style="color:var(--color-n);">—</span> Nitrogênio (N)</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-p-2" style="color:var(--color-p);">—</span> Fósforo (P)</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-pct-k-2" style="color:var(--color-k);">—</span> Potássio (K)</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Fórmula Média</div>
+            <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-n-2" style="color:var(--color-n); font-size:20px;">—</span> Média N</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-p-2" style="color:var(--color-p); font-size:20px;">—</span> Média P</div>
+              <div class="kpi-sub-item"><span id="kpi-siacesp-med-k-2" style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="section-title">ORION (Line Up)</h2>
+
+          <div class="kpi-card" style="border-left: 3px solid var(--purple);">
+            <div class="kpi-label">Toneladas Line Up Brasil</div>
+            <div class="kpi-period" id="kpi-orion-period">—</div>
+            <div class="kpi-value" id="kpi-orion-vol">—</div>
+            <div class="kpi-sub-row">
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-n" style="color:var(--color-n);">—</span> Nitrogênio (N)</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-p" style="color:var(--color-p);">—</span> Fósforo (P)</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-k" style="color:var(--color-k);">—</span> Potássio (K)</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Fórmula Média</div>
+            <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
+              <div class="kpi-sub-item"><span id="kpi-orion-med-n" style="color:var(--color-n); font-size:20px;">—</span> Média N</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-med-p" style="color:var(--color-p); font-size:20px;">—</span> Média P</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-med-k" style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
+            </div>
+          </div>
+
+          <div class="kpi-card" style="border-left: 3px solid var(--purple);">
+            <div class="kpi-label">Toneladas Line Up Brasil</div>
+            <div class="kpi-period" id="kpi-orion-period-2">—</div>
+            <div class="kpi-value" id="kpi-orion-vol-2">—</div>
+            <div class="kpi-sub-row">
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-n-2" style="color:var(--color-n);">—</span> Nitrogênio (N)</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-p-2" style="color:var(--color-p);">—</span> Fósforo (P)</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-pct-k-2" style="color:var(--color-k);">—</span> Potássio (K)</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Fórmula Média</div>
+            <div class="kpi-sub-row" style="border-top:none; padding-top:0; margin-top:8px;">
+              <div class="kpi-sub-item"><span id="kpi-orion-med-n-2" style="color:var(--color-n); font-size:20px;">—</span> Média N</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-med-p-2" style="color:var(--color-p); font-size:20px;">—</span> Média P</div>
+              <div class="kpi-sub-item"><span id="kpi-orion-med-k-2" style="color:var(--color-k); font-size:20px;">—</span> Média K</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid-equal">
+        <div class="chart-container">
+          <h3>Composição SIACESP</h3>
+          <div class="chart-wrapper"><canvas id="chart-siacesp-nutrients"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <h3>Composição LineUp</h3>
+          <div class="chart-wrapper"><canvas id="chart-orion-nutrients"></canvas></div>
+        </div>
+      </div>
+
+      <div class="chart-container" style="height: 380px;">
+        <h3>Relação de Pontos Pelo Tempo (SIACESP)</h3>
+        <div class="chart-wrapper"><canvas id="chart-siacesp-timeline"></canvas></div>
+      </div>
+
+      <!-- Elementos ocultos para evitar erros no script de nutrientes -->
+      <div style="display: none;">
+        <select id="filter-siacesp-from"></select>
+        <select id="filter-siacesp-to"></select>
+        <select id="filter-porto"></select>
+        <tbody id="comparison-table-body"></tbody>
+        <canvas id="chart-siacesp-products"></canvas>
+        <canvas id="chart-siacesp-volume-products"></canvas>
+        <canvas id="chart-orion-products"></canvas>
+      </div>
+
+    </div>
 
   </main>
-  <footer
-    style="background: var(--surface); border-top: 1px solid var(--border); padding: 16px 32px; text-align: center; font-size: 12px; color: var(--muted);">
+  
+  <footer style="background: var(--surface); border-top: 1px solid var(--border); padding: 16px 32px; text-align: center; font-size: 12px; color: var(--muted);">
     <div>© 2026 BrFértil S.A - Inteligência de Mercado & Análise de Dados.</div>
-    <div style="margin-top: 4px;">Desenvolvido por <a href=" https://br.linkedin.com/in/bernardo-moleta-17598a3a0"
-        target="_blank" style="color: var(--accent); text-decoration: none;">Bernardo Julio de Almeida Moleta</a></div>
+    <div style="margin-top: 4px;">Desenvolvido por <a href="https://br.linkedin.com/in/bernardo-moleta-17598a3a0" target="_blank" style="color: var(--accent); text-decoration: none;">Bernardo Julio de Almeida Moleta</a></div>
+  </footer>
 
-    <script src="./dash_main/script.js"></script>
+  <!-- Scripts Finais da Lógica de Negócio -->
+  <script src="./dash_main/script.js"></script>
+  <script src="./dash_pontos/script.js"></script>
 </body>
 
 </html>
